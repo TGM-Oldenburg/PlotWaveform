@@ -9,11 +9,12 @@ fprintf('\n\n\n.\n.\n.\n-------------- Start Tester --------------\n')
 tic
 % szFileName = 'SampleShort.wav';
 %   szFileName = 'SampleMid.wav';
-szFileName = 'SampleLong.wav';
+% szFileName = 'SampleLong.wav';
 %szFileName = 'song4channels.wav';
 % szFileName = 'songLeftLoud.wav';
 % szFileName = 'SampleFlipChannel.wav';
 % szFileName = 'SampleShort8channels.wav';
+szFileName = 'TomShort.wav';
 
 % % % for input data vector testing
 % xyz = wavread(szFileName);
