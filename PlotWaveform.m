@@ -66,6 +66,10 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal OrigSampleValues
 %                       additional modifications on the plot, made by the
 %                       superior function or script.
 %
+%   'Verbose':          integer to which to set the verbose logging. While
+%                       future versions may offer more depth in verbose,
+%                       right now only 0 (off) and 1 (on) are supported.
+%
 %
 %
 %   Output Parameter:
@@ -98,18 +102,9 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal OrigSampleValues
 %
 %   numChannels:        returns the number of channels in the WAVE
 %
-%--------------------------------------------------------------------------
-%
-%   Example: 
-%   --------
-%
-%
-%               Provide example here if applicable (STILL TO COME) 
-%
-%
-%--------------------------------------------------------------------------
 
-%%VERSIONS  actually Ver. 0.61
+%--------------------------------------------------------------------------
+% VERSION 0.70
 %   Author: Jan Willhaus, Joerg Bitzer (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -131,6 +126,7 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal OrigSampleValues
 %   Ver. 0.51   fixed faulty zoom extract                 16-Feb-2012   JW
 %   Ver. 0.60   supports PlotWaveformOverview function    27-Feb-2012   JW
 %   Ver. 0.61   code cleaning, updating the help info     09-Mar-2012   JW
+%   Ver. 0.70   code cleaning again. ready for public     01-Jun-2012   JW
 
 
 %% settings default values
@@ -183,7 +179,7 @@ bOrigPlotWithMarkersFlag = [];
 vZoomPosition = [];
 FileSize = [];
 myPostZoomAction = @NOP;
-
+iVerbose = 0;
 
 %% evaluation of input data
 if nargin == 0, help(mfilename); return; end;
@@ -197,7 +193,7 @@ elseif isnumeric(szFileNameOrData)
     if isnumeric(varargin{1})
         fs = varargin{1};
     else
-        error('When using raw wav-data, second argument is sampling rate!')
+        error('Raw wav-data requires second argument to be sampling rate')
     end
     varargin(1) = [];
     bIsWavFileFlag = 0;
@@ -242,16 +238,16 @@ varargin = processInputParameters(varargin);
             end
             if ischar(arg) && strcmpi(arg,'PaperPosition')
                 vPaperPosition = cParameters{kk + 1};
-                if  length(vPaperPosition) ~=[1 4]
-                    error('PaperPosition needs to be [x_pos y_pos x_len y_len]')
+                if  length(vPaperPosition) ~= 4
+                    error('PaperPosition needs to be [x y width height]')
                 end
                 valuesToDelete = [valuesToDelete kk:kk+1];
             end
             if ischar(arg) && strcmpi(arg,'PrintResolution')
                 iPrintResolution = cParameters{kk + 1};
-                %         if  iPrintResolution ~=150||300||600
-                %             error('PrintResolution needs to be either 150, 300 or 600')
-                %         end
+                if  iPrintResolution ~=150||300||600
+                    warning('PrintResolution should be 150, 300 or 600')
+                end
                 valuesToDelete = [valuesToDelete kk:kk+1];
             end
             if ischar(arg) && strcmpi(arg,'SilentPrint')
@@ -268,6 +264,10 @@ varargin = processInputParameters(varargin);
             end
             if ischar(arg) && strcmpi(arg,'PostZoomAction')
                 myPostZoomAction = cParameters{kk +1};
+                valuesToDelete = [valuesToDelete kk:kk+1];
+            end
+             if ischar(arg) && strcmpi(arg,'Verbose')
+                iVerbose = cParameters{kk +1};
                 valuesToDelete = [valuesToDelete kk:kk+1];
             end
         end
@@ -309,7 +309,11 @@ ChannelViewSet();
         
         if bChannelViewFlag == 1
             for channel=1:numChannels
-                set(gca, 'position', [pos(1) pos(2)+pos(4)*(channel-1)/(numChannels) pos(3) (1/(numChannels)*pos(4))])
+                set(gca, 'position', ...
+                    [pos(1) ...
+                    pos(2)+pos(4)*(channel-1)/(numChannels) ...
+                    pos(3) ...
+                    (1/(numChannels)*pos(4))])
                 myAxes(channel) = gca;
                 if channel ~= numChannels
                     myAxes(channel+1) = axes;
@@ -329,7 +333,9 @@ if isempty(get(gcf, 'ResizeFcn'))
 end
 
     function ReadAndComputeMaxData(iManualPlotWidth, NewStartEndVal)
-        tic
+        if iVerbose
+            tic
+        end
         if ~bReplotOriginalValuesFlag
             set(gca, 'units', 'Pixel')
             pos = get(gca, 'position');
@@ -364,29 +370,29 @@ end
             
             %Getting Num of Samples to be processed
             numSamples = iLastSample-iFirstSample;
-            %         fprintf('%d samples on input\n', numSamples)
-            SampleValuesPos = 0;
+            if iVerbose
+                fprintf('%d samples on input\n', numSamples);
+            end
             
+            SampleValuesPos = 0;
             bPlotBlockwiseFlag = 1;
             bPlotWithMarkersFlag = 0;
-            
-            %         NN = max(nextpow2(numSamples)-1, 0);          %% approach with number of samples in 2^x
-            %         numSamplesToDisplay = 2^NN;                   %% approach with number of samples in 2^x
+           
             numSamplesToDisplay = numSamples;
+            if iVerbose
+                fprintf('%d samples on output\n', numSamplesToDisplay)
+            end
             
-            %         fprintf('%d samples on output\n', numSamplesToDisplay)
-            
-            %         indBlocks = [iFirstSample+(floor((iLastSample-numSamplesToDisplay)/2)) iFirstSample+numSamplesToDisplay+floor((iLastSample-numSamplesToDisplay)/2)];
             indBlocks = [iFirstSample iFirstSample+numSamplesToDisplay];
             
             SamplesPerPixel = ceil(numSamples/plotWidth);
             
-            %         NN = max(nextpow2(SamplesPerPixel)-1, 0);     %% approach with number of samples in 2^x
-            %         MaxCompLen = 2^NN;                            %% approach with number of samples in 2^x
             MaxCompLen = SamplesPerPixel;
             
             UnterBlocks = floor(numSamplesToDisplay/MaxCompLen);
-            %         fprintf('%d subblocks\n', UnterBlocks)
+            if iVerbose
+                fprintf('%d subblocks\n', UnterBlocks)
+            end
             
             SampleValuesPos = zeros(UnterBlocks,numChannels);
             SampleValuesNeg = zeros(UnterBlocks,numChannels);
@@ -399,8 +405,12 @@ end
             
             if  numSamplesToDisplay > iPlotBlockwiseThreshold
                 for mm = 1:UnterBlocks
-                    SampleValuesPos(mm,:) = (max((DataBlocks((mm-1)*MaxCompLen+1:mm*MaxCompLen, :))));
-                    SampleValuesNeg(mm,:) = (min((DataBlocks((mm-1)*MaxCompLen+1:mm*MaxCompLen, :))));
+                    SampleValuesPos(mm,:) = ...
+                        (max( ...
+                        (DataBlocks((mm-1)*MaxCompLen+1:mm*MaxCompLen,:))));
+                    SampleValuesNeg(mm,:) = ...
+                        (min( ...
+                        (DataBlocks((mm-1)*MaxCompLen+1:mm*MaxCompLen,:))));
                 end
             else
                 SampleValuesPos = DataBlocks;
@@ -410,8 +420,12 @@ end
                 bAlphaBlendOn = 1;
             end
             if length(StartEndVal) == 2
-                StartEndVal(3) = -max(max(abs([SampleValuesPos; SampleValuesNeg]))) * 1.1 - eps;
-                StartEndVal(4) = +max(max(abs([SampleValuesPos; SampleValuesNeg]))) * 1.1 + eps;
+                StartEndVal(3) = ... 
+                    -max(max(abs([SampleValuesPos; ...
+                    SampleValuesNeg]))) * 1.1 - eps;
+                StartEndVal(4) = ...
+                    +max(max(abs([SampleValuesPos; ...
+                    SampleValuesNeg]))) * 1.1 + eps;
             end
             if isempty(OrigStartEndVal)
                 OrigStartEndVal = StartEndVal;
@@ -420,10 +434,7 @@ end
                 OrigStartEndVal(3) = StartEndVal(3);
                 OrigStartEndVal(4) = StartEndVal(4);
             end
-  
-            %         diffHalfshaft = ((max((abs(SampleValuesPos) - abs(SampleValuesNeg)))));
-            %         fprintf('%f difference between halfshafts\n', diffHalfshaft)
-            %         if diffHalfshaft < 0.3
+
             if  numSamplesToDisplay <= iPlotBlockwiseThreshold
                 bPlotBlockwiseFlag = 0;
                 if isempty(bOrigPlotBlockwiseFlag)
@@ -448,8 +459,12 @@ end
             end
         end
         plotData;
-        T= toc;
-        %         fprintf('%f seconds of data\n%f seconds to process\n------------ done ----------\n',numSamples/fs,T)
+        
+        if iVerbose
+            T = toc;
+            fprintf('%f seconds in data\n%f seconds to process.\n', ...
+                numSamples/fs, T)
+        end
     end
 
 myReadAndComputeMaxData = @ReadAndComputeMaxData;
@@ -467,7 +482,11 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
             fprintf('Resetting to original values\n')
         end
         if isempty(vZoomPosition)
-            vZoomPosition =  [StartEndVal(1) StartEndVal(3) (StartEndVal(2)-StartEndVal(1)) (StartEndVal(4)-StartEndVal(3))];
+            vZoomPosition =  [ ...
+                StartEndVal(1) ...
+                StartEndVal(3) ...
+                StartEndVal(2)-StartEndVal(1) ...
+                StartEndVal(4)-StartEndVal(3)];
         end
         if size(SampleValuesPos,1) == 1
             SampleValuesPos = [SampleValuesPos; SampleValuesPos];
@@ -479,7 +498,9 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
         if isempty(OrigSampleValuesNeg)
         OrigSampleValuesNeg = SampleValuesNeg;
         end 
-        timeVec = linspace(StartEndVal(1), StartEndVal(2), size(SampleValuesPos,1));
+        timeVec = linspace(StartEndVal(1), ...
+            StartEndVal(2), ...
+            size(SampleValuesPos,1));
         if isempty(OrigTimeVec)
             OrigTimeVec = timeVec;
         end
@@ -493,30 +514,45 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
                     switch bSampleViewStyleFlag
                         case 0
                             if UnterBlocks*4<plotWidth
-                                stem(timeVec,SampleValuesPos(:,channel),'Color',myColorsetFace(mod(channel-1, numColorsFace)+1,:));
+                                stem(timeVec, ...
+                                    SampleValuesPos(:,channel), ...
+                                    'Color', myColorsetFace(mod ...
+                                    (channel-1, numColorsFace)+1,:));
                             else
-                                plot(timeVec,SampleValuesPos(:,channel),'Color',myColorsetFace(mod(channel-1, numColorsFace)+1,:));
+                                plot(timeVec, ...
+                                    SampleValuesPos(:,channel), ...
+                                    'Color',myColorsetFace(mod( ...
+                                    channel-1, numColorsFace)+1,:));
                             end
                         case 1
-                            stairs(timeVec,SampleValuesPos(:,channel),'Color',myColorsetFace(mod(channel-1, numColorsFace)+1,:));
+                            stairs(timeVec,SampleValuesPos(:,channel), ...
+                                'Color',myColorsetFace(mod ...
+                                (channel-1, numColorsFace)+1,:));
                         case 2
-                            plot(timeVec,SampleValuesPos(:,channel),'Color',myColorsetFace(mod(channel-1, numColorsFace)+1,:));
+                            plot(timeVec,SampleValuesPos(:,channel), ...
+                                'Color',myColorsetFace(mod ...
+                                (channel-1, numColorsFace)+1,:));
                     end
                 else
-                    plot(timeVec,SampleValuesPos(:,channel),'Color',myColorsetFace(mod(channel-1, numColorsFace)+1,:));
+                    plot(timeVec,SampleValuesPos(:,channel), ...
+                        'Color',myColorsetFace(mod ...
+                        (channel-1, numColorsFace)+1,:));
                 end
             elseif bPlotBlockwiseFlag == 1
-                hWaveView = fill([timeVec timeVec(end:-1:1)],[SampleValuesPos(:,channel); flipud(SampleValuesNeg(:,channel))],'b');
+                hWaveView = fill([timeVec timeVec(end:-1:1)],...
+                    [SampleValuesPos(:,channel); ...
+                    flipud(SampleValuesNeg(:,channel))],'b');
                 if bAlphaBlendOn == 1
-                    set(hWaveView,'FaceAlpha',0.5);
-                    set(hWaveView,'EdgeAlpha',0.6);
-                    set(hWaveView,'FaceColor',myColorsetFace(mod(channel-1, numColorsFace)+1,:));
-                    set(hWaveView,'EdgeColor',myColorsetEdge(mod(channel-1, numColorsEdge)+1,:));
+                    set(hWaveView,'FaceAlpha',0.5, 'EdgeAlpha',0.6, ...
+                        'FaceColor', ...
+                        myColorsetFace(mod(channel-1, numColorsFace)+1,:), ...
+                        'EdgeColor', ...
+                        myColorsetEdge(mod(channel-1, numColorsEdge)+1,:));
                 else
-                    set(hWaveView,'EdgeAlpha',0.6);
-                    set(hWaveView,'FaceColor',...
-                        myColorsetFace(mod(channel-1, numColorsFace)+1,:));
-                    set(hWaveView,'EdgeColor',...
+                    set(hWaveView,'EdgeAlpha',0.6, ... 
+                        'FaceColor', ...
+                        myColorsetFace(mod(channel-1, numColorsFace)+1,:), ...
+                        'EdgeColor', ...
                         myColorsetEdge(mod(channel-1, numColorsEdge)+1,:));
                 end
             end
@@ -591,13 +627,19 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
 %% printing operations
   function SetPrintResolution(~,~)
       [OrigSampleValuesPos OrigSampleValuesNeg] = PrepareFigForPrint;
-      [szSaveFileName, szSaveFilePath, szSaveFilterIndex] = uiputfile({ '*.eps', 'EPS file (*.eps)'; '*.jpg', 'JPEG image (*.jpg)'; '*.pdf', 'Portable Document Format (*.pdf)'}, 'Save As', szFileNameOrData);
+      [szSaveFileName, ...
+          szSaveFilePath, ...
+          szSaveFilterIndex] = uiputfile({ '*.eps', 'EPS file (*.eps)'; ...
+          '*.jpg', 'JPEG image (*.jpg)'; ...
+          '*.pdf', 'Portable Document Format (*.pdf)'}, ...
+          'Save As', szFileNameOrData);
       if isequal(szSaveFileName,0) == 0 || isequal(szSaveFilePath,0) == 0
           szSaveFileNamePath = sprintf('%s%s', szSaveFilePath, szSaveFileName);
           szSaveFormat = {'-depsc', '-djpeg', '-dpdf'};
           set(gcf, 'renderer', 'painters');
           set(gcf, 'PaperPositionMode', 'manual');
-          print(gcf,szSaveFormat{szSaveFilterIndex},sprintf('-r%i', iPrintResolution),szSaveFileNamePath)
+          print(gcf,szSaveFormat{szSaveFilterIndex}, ...
+              sprintf('-r%i', iPrintResolution),szSaveFileNamePath)
       end
       bPrintFlag = 0;
       SampleValuesPos = OrigSampleValuesPos;
@@ -675,23 +717,20 @@ set(hMenuSave, 'ClickedCallback', @SetPrintResolution);
 zoom('off')
 set(zoom,'UIContextMenu',myZoomMenu);
 
-
-
-% Preliminary Custom-Menu-Badge (To be removed in actual release)
-% uimenu(myZoomMenu, 'Label', '---- Rebuild Zoom Context Menu ----');
-
-% Submenu to set amount of zoom for clicking (Not implemented yet)
-% uimenu(myZoomMenu, 'Label', 'Zoom Resolution %%NOT YET IMPLEMENTED%%');
-
 % Option to fully reset the zoom on plot to its original view
 itemMyZoomReset = uimenu(myZoomMenu, ...
     'Label', 'Reset to Original View', ...
     'Callback', @SetOriginalZoom);
 
-% Submenu to enable or disable ChannelView
-% itemMyZoomChannelView = uimenu(myZoomMenu, 'Label', '%%ALPHA%% Channels Seperately (ChannelView)');
-% itemMyZoomEnableChannelView = uimenu(itemMyZoomChannelView, 'Label', '%%ALPHA%% Enable ' , 'Callback', {@SetChannelView, 1});
-% itemMyZoomDisableChannelView = uimenu(itemMyZoomChannelView, 'Label', '%%ALPHA%% Disable' , 'Callback', {@SetChannelView, 0});
+% Submenu to enable or disable ChannelView (Not implemented yet)
+% itemMyZoomChannelView = uimenu(myZoomMenu, ...
+%     'Label', 'ChannelView');
+% itemMyZoomEnableChannelView = uimenu(itemMyZoomChannelView, ...
+%     'Label', 'Enable ', ... 
+%     'Callback', {@SetChannelView, 1});
+% itemMyZoomDisableChannelView = uimenu(itemMyZoomChannelView, ...
+%     'Label', 'Disable', ...
+%     'Callback', {@SetChannelView, 0});
 
 % Submenu to choose direction of zoom-process (horizontal/vertical/both)
 itemMyZoomDirections = uimenu(myZoomMenu, ...
@@ -753,7 +792,7 @@ zoom('on')
 
 end
 
-%%--------------------Licence ---------------------------------------------
+%%------------------------ Licence ---------------------------------------------
 % Copyright (c) <2011> Jan Willhaus, Joerg Bitzer
 % Institute for Hearing Technology and Audiology
 % Jade University of Applied Sciences 
