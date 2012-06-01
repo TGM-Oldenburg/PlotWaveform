@@ -10,8 +10,8 @@ disp('----------------- Start Tester -----------------')
 % szFileName = 'song4channels.wav';
 % szFileName = 'songLeftLoud.wav';
 % szFileName = 'SampleFlipChannel.wav';
- szFileName = 'SampleShort8channels.wav';
-
+% szFileName = 'SampleShort8channels.wav';
+szFileName = 'TomShort.wav';
 % % % for input data vector testing
 % xyz = wavread(szFileName);
 % Out = PlotWaveform(xyz,44100);
