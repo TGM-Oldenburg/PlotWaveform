@@ -355,8 +355,9 @@ end
                 StartEndVal(3 : 4) = [];
             end
 
-            
-            %         fprintf('%d pixel width of plot\n', plotWidth)
+            if iVerbose
+                fprintf('%d pixel width of plot\n', plotWidth)
+            end
             
             iFirstSample = ceil(StartEndVal(1)*fs);
             if (iFirstSample <= 0)
@@ -684,13 +685,19 @@ myPrint=@internalPrint;
         bSampleViewStyleFlag = bSampleViewStyle;
         if bSampleViewStyle == 0
             set(itemMyZoomShowStems, 'Checked', 'on')
-%             fprintf('Sample View style was set to Stems\n')
+            if iVerbose
+                fprintf('Sample View style was set to Stems\n')
+            end
         elseif bSampleViewStyle == 1
             set(itemMyZoomShowStairs, 'Checked', 'on')
-%             fprintf('Sample View style was set to Stairs\n')
+            if iVerbose
+                fprintf('Sample View style was set to Stairs\n')
+            end
         elseif bSampleViewStyle == 2
             set(itemMyZoomShowPlot, 'Checked', 'on')
-%             fprintf('Sample View style was set to Plotted Line\n')
+            if iVerbose
+                fprintf('Sample View style was set to Plotted Line\n')
+            end
         end
         plotData();
     end
@@ -787,7 +794,7 @@ zoom('on')
     end
 
     function NOP(varargin)
-        % No OPeration; simply does nothing. 
+        % No Operation; simply does nothing, to fill void.
     end
 
 end
