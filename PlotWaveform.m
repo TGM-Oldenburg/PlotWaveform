@@ -1,4 +1,6 @@
-function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal OrigSampleValuesPos OrigSampleValuesNeg OrigTimeVec numChannels myReadAndComputeMaxData] = PlotWaveform(szFileNameOrData, varargin)
+function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
+    OrigSampleValuesPos OrigSampleValuesNeg OrigTimeVec numChannels ...
+    myReadAndComputeMaxData DataBlocks FileSize fs] = PlotWaveform(szFileNameOrData, varargin)
 %PLOTWAVEFORM   waveform plot
 %   PlotWaveform plots the waveform of a WAVE-file, or vector of WAVE-data
 %   using a block by block mean calculation algorithm. WAVE-data first gets
@@ -178,7 +180,9 @@ bOrigAlphaBlendOn = [];
 bOrigPlotWithMarkersFlag = [];
 vZoomPosition = [];
 FileSize = [];
+hParent = [];
 myPostZoomAction = @NOP;
+iZoomMode = 0;
 iVerbose = 0;
 
 %% evaluation of input data
@@ -266,10 +270,15 @@ varargin = processInputParameters(varargin);
                 myPostZoomAction = cParameters{kk +1};
                 valuesToDelete = [valuesToDelete kk:kk+1];
             end
-             if ischar(arg) && strcmpi(arg,'Verbose')
+            if ischar(arg) && strcmpi(arg,'Verbose')
                 iVerbose = cParameters{kk +1};
                 valuesToDelete = [valuesToDelete kk:kk+1];
             end
+            if ischar(arg) && strcmpi(arg,'ZoomMode')
+                iZoomMode = cParameters{kk +1};
+                valuesToDelete = [valuesToDelete kk:kk+1];
+            end
+            
         end
         
         cParameters(valuesToDelete) = [];
@@ -289,7 +298,6 @@ if isempty(vPaperPosition)
 end
 
 
-
 numColorsFace = size(myColorsetFace,1);
 numColorsEdge = size(myColorsetEdge,1);
 
@@ -303,7 +311,7 @@ ChannelViewSet();
     function ChannelViewSet()
         myAxes(1) = gca;
         myFigure = gcf;
-        
+        hParent = myAxes;
         set(gca, 'units', 'normalized')
         pos = get(gca, 'position');
         
@@ -475,7 +483,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
         if bReplotOriginalValuesFlag
             SampleValuesPos = OrigSampleValuesPos;
             SampleValuesNeg = OrigSampleValuesNeg;
-            timeVec = OrigTimeVec;
+%             timeVec = OrigTimeVec;
             
             bPlotBlockwiseFlag = bOrigPlotBlockwiseFlag;
             bAlphaBlendOn = bOrigAlphaBlendOn;
@@ -508,7 +516,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
 
         for channel=1:numChannels
             if bChannelViewFlag == 1
-                axes(myAxes(channel));
+                hParent = myAxes(channel);
             end
             if bPlotBlockwiseFlag == 0
                 if bPlotWithMarkersFlag == 1
@@ -518,31 +526,43 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
                                 stem(timeVec, ...
                                     SampleValuesPos(:,channel), ...
                                     'Color', myColorsetFace(mod ...
-                                    (channel-1, numColorsFace)+1,:));
+                                    (channel-1, numColorsFace)+1,:),...
+                                    'Parent', hParent, ...
+                                    'Tag', 'pwf_plots');
                             else
                                 plot(timeVec, ...
                                     SampleValuesPos(:,channel), ...
                                     'Color',myColorsetFace(mod( ...
-                                    channel-1, numColorsFace)+1,:));
+                                    channel-1, numColorsFace)+1,:), ...
+                                    'Parent', hParent, ...
+                                    'Tag', 'pwf_plots');
                             end
                         case 1
                             stairs(timeVec,SampleValuesPos(:,channel), ...
                                 'Color',myColorsetFace(mod ...
-                                (channel-1, numColorsFace)+1,:));
+                                (channel-1, numColorsFace)+1,:), ...
+                                'Parent', hParent, ...
+                                    'Tag', 'pwf_plots');
                         case 2
                             plot(timeVec,SampleValuesPos(:,channel), ...
                                 'Color',myColorsetFace(mod ...
-                                (channel-1, numColorsFace)+1,:));
+                                (channel-1, numColorsFace)+1,:), ...
+                                'Parent', hParent, ...
+                                    'Tag', 'pwf_plots');
                     end
                 else
                     plot(timeVec,SampleValuesPos(:,channel), ...
                         'Color',myColorsetFace(mod ...
-                        (channel-1, numColorsFace)+1,:));
+                        (channel-1, numColorsFace)+1,:), ...
+                        'Parent', hParent, ...
+                                    'Tag', 'pwf_plots');
                 end
             elseif bPlotBlockwiseFlag == 1
                 hWaveView = fill([timeVec timeVec(end:-1:1)],...
                     [SampleValuesPos(:,channel); ...
-                    flipud(SampleValuesNeg(:,channel))],'b');
+                    flipud(SampleValuesNeg(:,channel))],'b', ...
+                    'Parent', hParent, ...
+                    'Tag', 'pwf_plots');
                 if bAlphaBlendOn == 1
                     set(hWaveView,'FaceAlpha',0.5, 'EdgeAlpha',0.6, ...
                         'FaceColor', ...
@@ -557,24 +577,24 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
                         myColorsetEdge(mod(channel-1, numColorsEdge)+1,:));
                 end
             end
-            axis(StartEndVal);
+            axis(hParent, StartEndVal);
             if bChannelViewFlag == 0
-                hold on;
+                hold(hParent, 'on');
             end
             if bShowXAxisAboveFlag
                 if channel == 1
-                    set(gca, 'XAxisLocation', 'top')
+                    set(hParent, 'XAxisLocation', 'top')
                 end
                  if channel > 1 && bChannelViewFlag == 1
-                    set(gca, 'xticklabel', [])
+                    set(hParent, 'xticklabel', [])
                  end
             else
                 if channel ~= numChannels && bChannelViewFlag == 1
-                    set(gca, 'xticklabel', [])
+                    set(hParent, 'xticklabel', [])
                 end
             end
         end
-        hold off;   
+        hold(hParent,'off');   
     end        
 
 %% custom zoom operations
@@ -702,21 +722,21 @@ myPrint=@internalPrint;
         plotData();
     end
 
-    function SetChannelView(~,~,desiredFlag)
-        switch desiredFlag
-            case 1
-                set(itemMyZoomEnableChannelView, 'Checked', 'on')
-                set(itemMyZoomDisableChannelView, 'Checked', 'off')
-            case 0
-                set(itemMyZoomEnableChannelView, 'Checked', 'off')
-                set(itemMyZoomDisableChannelView, 'Checked', 'on')
-        end
-        bChannelViewFlag = desiredFlag;
-        bAlphaBlendFlag = ~desiredFlag;
-        close gcf
-        ChannelViewSet();
-        ReadAndComputeMaxData();
-    end
+%     function SetChannelView(~,~,desiredFlag)
+%         switch desiredFlag
+%             case 1
+%                 set(itemMyZoomEnableChannelView, 'Checked', 'on')
+%                 set(itemMyZoomDisableChannelView, 'Checked', 'off')
+%             case 0
+%                 set(itemMyZoomEnableChannelView, 'Checked', 'off')
+%                 set(itemMyZoomDisableChannelView, 'Checked', 'on')
+%         end
+%         bChannelViewFlag = desiredFlag;
+%         bAlphaBlendFlag = ~desiredFlag;
+%         close gcf
+%         ChannelViewSet();
+%         ReadAndComputeMaxData();
+%     end
 
 %% custom zoom menu build-up
 hMenuSave = findall(gcf,'tag','Standard.SaveFigure');
@@ -725,7 +745,7 @@ zoom('off')
 set(zoom,'UIContextMenu',myZoomMenu);
 
 % Option to fully reset the zoom on plot to its original view
-itemMyZoomReset = uimenu(myZoomMenu, ...
+uimenu(myZoomMenu, ...
     'Label', 'Reset to Original View', ...
     'Callback', @SetOriginalZoom);
 
@@ -775,13 +795,31 @@ itemMyZoomShowPlot = uimenu(itemMyZoomSampleView, ...
 zoom('on')
 
 
-        function PostCallbackWithLims(~, evd)
+if bShowXAxisAboveFlag
+    set(gcf,'toolbar','none')
+    set(gcf,'menubar', 'none')
+end
+
+
+switch iZoomMode
+    case 1
+        HorizontalZoomOnly;
+    case 2
+        HorizontalZoomOnlyAutoVert
+    case 3
+        VerticalZoomOnly
+end
+
+
+
+    function PostCallbackWithLims(~, evd)
             StartEndVal(1 : 2) = get(evd.Axes,'XLim');
             StartEndVal(3 : 4) = get(evd.Axes,'YLim');
             
             ReadAndComputeMaxData(0, StartEndVal);
             if ~isempty(myPostZoomAction)
-                myPostZoomAction(StartEndVal);
+                myPostZoomAction(StartEndVal, SampleValuesPos);
+
             end
             
     end
