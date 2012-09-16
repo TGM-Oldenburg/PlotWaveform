@@ -58,7 +58,7 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName)
 
 
 %DEBUG
-szFileName = 'SampleMid.wav';
+szFileName = 'TomShort.wav';
 close gcf
 
 if ismac
@@ -87,8 +87,12 @@ auxSize             = [ 400 300];
 
 %% Set global settings
 szSaveFile      = 'WaveformPlayer.ini';
-iBlockLen       = 1024*1;
+iBlockLen       = 1024*4;
+iWinMin         = 256;
+iWinDef         = 2048;
+iWinMax         = 8192;
 iUpdateInterval = 2;
+iNFFT           = 2^6;
 iIconSize       = 24;
 globsetOutputID = 0;
 
@@ -189,6 +193,9 @@ CalculateSpectrogram();
 
 % PlotWaveform/SetOriginalZoom;
 
+%--------------------------------------------------------------------------
+% SUBFUNCTIONS
+%--------------------------------------------------------------------------
 
 %% Function to retrieve the axes size
     function GetAxesSize
@@ -209,7 +216,7 @@ CalculateSpectrogram();
             
             if bCalcSpectogram
                 OrigSpectrData = 20*log10(abs(...
-                    spectrogram(wavData(:, xx), 2^10, 'yaxis')));                
+                    spectrogram(wavData(:, xx), iWinDef, 'yaxis')));                
             end
 
             SpectrInterval(1) = floor(...
@@ -244,26 +251,19 @@ CalculateSpectrogram();
             switch bShowAsSpectrogram
                 case 1
                     set(hSpectograms(xx), 'Visible', 'on');
-%                     axis(hWaveAxes(xx) ,'xy', 'tight');
+                    axis(hWaveAxes(xx) ,'xy', 'tight');
                 case 0
                     set(hSpectograms(xx), 'Visible', 'off');
             end
             
-
-            
-           
-            
-            colormap(jet); view(0,90);
+            colormap(bone); 
+%             view(0,90);
             
             hold(hWaveAxes(xx), 'off')
             
             bCalcSpectogram = 0;
         end
     end
-
-%--------------------------------------------------------------------------
-% SUBFUNCTIONS
-%--------------------------------------------------------------------------
 
 %% Initiation of interface and functionality
     function init
@@ -606,6 +606,33 @@ CalculateSpectrogram();
             'Callback',@modifyRouting, ...
             'Separator', 'on');
         
+        %% - Menubar: Fourier Transform Window Size
+        
+        handles.hMenubarWindowSize = uimenu('Label','Window');
+        
+        iWinMinLog2 = nextpow2(iWinMin);
+        iWinMaxLog2 = nextpow2(iWinMax);
+        
+        iMaxWinCount = iWinMaxLog2-iWinMinLog2+1;
+        
+        for windows=1:iMaxWinCount
+            
+            iWinSet = 2^(iWinMinLog2+windows-1);
+            
+            handles.WindowSize(windows) = uimenu(...
+                handles.hMenubarWindowSize, ...
+                'Label',sprintf('%i (2^%i)', ...
+                iWinSet, ...
+                iWinMinLog2+windows-1),...
+                'Checked', 'off', ...
+                'Callback',{@setWindowSize, iWinSet});
+            
+            if iWinSet == iWinDef
+                set(handles.WindowSize(windows), 'Checked', 'on')
+            end
+            
+            
+        end    
         %% Get msound going
         
         if bPlaybackSupportFlag
@@ -614,6 +641,20 @@ CalculateSpectrogram();
         end
         
     end
+
+%% Callback on user changing window size
+    function setWindowSize(Object,~, NewWinSize)
+       
+        set(handles.WindowSize(:), 'Checked', 'off');
+        set(Object, 'Checked', 'on');
+        
+        iWinDef = NewWinSize;
+        
+        bCalcSpectogram = 1;
+        CalculateSpectrogram();
+        
+    end
+
 
 %% Switching function for the routing matrix
     function setRoutingOnOff(Object, ~, bOnOff)
