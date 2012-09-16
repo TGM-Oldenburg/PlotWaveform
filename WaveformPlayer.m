@@ -80,6 +80,24 @@ myColorsetFace      = [ 051/255 051/255 230/255; ...    % blue
                         230/255 051/255 230/255; ...
                         051/255 230/255 230/255];
 myColorsetEdge      = [ 051/255 051/255 051/255];       % dark grey
+guiColormaps        = { 'autumn', ...
+                        'bone', ...
+                        'colorcube', ...
+                        'cool', ...
+                        'copper', ...
+                        'flag', ...
+                        'gray', ...
+                        'hot', ...
+                        'hsv', ...
+                        'jet', ...
+                        'lines', ...
+                        'pink', ...
+                        'prism', ...
+                        'spring', ...
+                        'summer', ...
+                        'white', ...
+                        'winter' };
+guiColormapDef      = 'jet';
 guiBackgroundColor  = [ 229/255 229/255 229/255];       % light grey
 guiSize             = [ 800 600];
 auxSize             = [ 400 300];
@@ -111,6 +129,7 @@ vStartEndVal    = [];
 OrigSpectrData  = [];
 routingMatrix   = [];
 stDevices       = [];
+defaultIDs      = [];
 numOutputs      = [];
 iRedrawCounter  = 0;
 
@@ -258,7 +277,7 @@ CalculateSpectrogram();
                     set(hSpectograms(xx), 'Visible', 'off');
             end
             
-            colormap(bone); 
+            colormap(hWaveAxes(xx), guiColormapDef); 
 %             view(0,90);
             
             hold(hWaveAxes(xx), 'off')
@@ -608,6 +627,63 @@ CalculateSpectrogram();
             'Callback',@modifyRouting, ...
             'Separator', 'on');
         
+        %% - - Editfunction to modify the routing matrix
+        function modifyRouting(~,~,~)
+            
+            %% Beautifying: Centering the routing matrix
+            set(hFigure,'Units','pixels');
+            vFigSze = get(hFigure, 'Position');
+            auxSize = [...
+                vFigSze(3:4)/2-auxSize(1:2)/2+vFigSze(1:2) ...
+                auxSize(1:2)];
+            
+            
+            hRoutingPanel = figure(...
+                'Name', 'Routing Matrix', ...
+                'NumberTitle', 'off', ...
+                'Resize', 'off', ...
+                'Position', auxSize, ...
+                'Color', guiBackgroundColor);
+            
+            set(gcf,'toolbar','none')
+            set(gcf,'menubar', 'none')
+            
+            hPanel = uipanel(...
+                'Parent', hRoutingPanel, ...
+                'Title', 'Routing Matrix', ...
+                'Units', 'normalized', ...
+                'Position', [0.05 0.05 0.9 0.9]);
+            
+            
+            editColumns = true(1,numChannels);
+            
+            uitable(...
+                'Parent', hPanel, ...
+                'Data', routingMatrix, ...
+                'Units', 'normalized', ...
+                'Position', [0.05 0.05 0.9 0.9], ...
+                'CellEditCallback', @cellEditCB, ...
+                'ColumnEditable', editColumns);
+            
+        end
+        
+        %% - - Callback on user editing the routing matrix
+        function cellEditCB(Object, ~, ~)
+            routingMatrix = get(Object, 'Data');
+            
+        end
+        
+        %% - - Switching function for the routing matrix
+        function setRoutingOnOff(Object, ~, bOnOff)
+            
+            set(handles.RoutingEnDis, 'Checked', 'off')
+            
+            set(Object, 'Checked', 'on')
+            
+            bRoutingEnabled = bOnOff;
+            
+        end
+        
         %% - Menubar: Fourier Transform Window Size
                 
         iWinMinLog2 = nextpow2(iWinMin);
@@ -636,6 +712,19 @@ CalculateSpectrogram();
             
         end    
         
+        %% - - Callback on user changing window size
+        function setWindowSize(Object,~, NewWinSize)
+            
+            set(handles.WindowSize(:), 'Checked', 'off');
+            set(Object, 'Checked', 'on');
+            
+            iWinDef = NewWinSize;
+            
+            bCalcSpectogram = 1;
+            CalculateSpectrogram();
+            
+        end
+
         %% - Menubar: Fourier Transform FFT Length
         
         iNFFTMinLog2 = nextpow2(iNFFTMin);
@@ -664,8 +753,49 @@ CalculateSpectrogram();
             
         end    
         
+        %% - - Callback on user changing NFFT size
+        function setNFFTSize(Object,~, NewNFFTSize)
+            
+            set(handles.NFFTSize(:), 'Checked', 'off');
+            set(Object, 'Checked', 'on');
+            
+            iNFFTDef = NewNFFTSize;
+            
+            bCalcSpectogram = 1;
+            CalculateSpectrogram();
+            
+        end
         
+        %% - Menubar: Color Map for Spectrogram
         
+        handles.hMenbuarColormap = uimenu('Label','Colormap');
+        
+        for nn=1:numel(guiColormaps)
+                        
+            handles.Colormap(nn) = uimenu(...
+                handles.hMenbuarColormap, ...
+                'Label', guiColormaps{nn}, ...
+                'Checked', 'off', ...
+                'Callback', @setColormap);
+            
+            if strcmpi(guiColormaps{nn},guiColormapDef)
+                set(handles.Colormap(nn), 'Checked', 'on')
+            end            
+        end    
+        
+        %% - - Callback on user changing color map
+        function setColormap(Object, ~, ~)
+            
+           set(handles.Colormap(:), 'Checked', 'off');
+           set(Object, 'Checked', 'on');
+           
+           guiColormapDef = get(Object, 'Label')
+           
+           for ax=1:numel(hWaveAxes)
+               colormap(hWaveAxes(ax),Object)
+           end
+        end
+
         %% Get msound going
         
         if bPlaybackSupportFlag
@@ -675,89 +805,10 @@ CalculateSpectrogram();
         
     end
 
-%% Callback on user changing window size
-    function setWindowSize(Object,~, NewWinSize)
-       
-        set(handles.WindowSize(:), 'Checked', 'off');
-        set(Object, 'Checked', 'on');
-        
-        iWinDef = NewWinSize;
-        
-        bCalcSpectogram = 1;
-        CalculateSpectrogram();
-        
-    end
-
-%% Callback on user changing NFFT size
-    function setNFFTSize(Object,~, NewNFFTSize)
-       
-        set(handles.NFFTSize(:), 'Checked', 'off');
-        set(Object, 'Checked', 'on');
-        
-        iNFFTDef = NewNFFTSize;
-        
-        bCalcSpectogram = 1;
-        CalculateSpectrogram();
-        
-    end
 
 
-%% Switching function for the routing matrix
-    function setRoutingOnOff(Object, ~, bOnOff)
-        
-        set(handles.RoutingEnDis, 'Checked', 'off')
-        
-        set(Object, 'Checked', 'on')
-        
-        bRoutingEnabled = bOnOff;
-        
-    end
 
-%% Editfunction to modify the routing matrix
-    function modifyRouting(~,~,~)
-        
-        %% Beautifying: Centering the routing matrix
-        set(hFigure,'Units','pixels');
-        vFigSze = get(hFigure, 'Position');
-        auxSize = [...
-            vFigSze(3:4)/2-auxSize(1:2)/2+vFigSze(1:2) ...
-            auxSize(1:2)];
-        
-        
-        hRoutingPanel = figure(...
-            'Name', 'Routing Matrix', ...
-            'NumberTitle', 'off', ...
-            'Resize', 'off', ...
-            'Position', auxSize, ...
-            'Color', guiBackgroundColor);
-        
-        set(gcf,'toolbar','none')
-        set(gcf,'menubar', 'none')
-        
-        hPanel = uipanel(...
-            'Parent', hRoutingPanel, ...
-            'Title', 'Routing Matrix', ...
-            'Units', 'normalized', ...
-            'Position', [0.05 0.05 0.9 0.9]);
-        
-            
-        editColumns = true(1,numChannels);
-        
-        uitable(...
-            'Parent', hPanel, ...
-            'Data', routingMatrix, ...
-            'Units', 'normalized', ...
-            'Position', [0.05 0.05 0.9 0.9], ...
-            'CellEditCallback', @cellEditCB, ...
-            'ColumnEditable', editColumns);
 
-    end
-
-%% Callback on user editing the routing matrix
-    function cellEditCB(Object, ~, ~)
-        routingMatrix = get(Object, 'Data');
-        
-    end
 
 %% Switching function for the waveform display
     function SwitchShowWaveform(object,~)
@@ -1081,7 +1132,11 @@ CalculateSpectrogram();
     end
 
     function getNumberOfOutputs(devID)
-       
+        
+        if devID == 0
+            devID = defaultIDs(2);
+        end
+        
         stDevices = msound( 'deviceInfo');
         vActualDevice = [stDevices.id]==devID;
         numOutputs = stDevices(vActualDevice).('outputs');
@@ -1157,6 +1212,8 @@ CalculateSpectrogram();
         set(hRect, 'Position', vZoomPosition);
 
         vStartEndVal = StartEndVal;
+        
+        CalculateSpectrogram();
     end
 
 %% Destructor function
