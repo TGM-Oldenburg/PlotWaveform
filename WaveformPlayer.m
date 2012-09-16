@@ -91,8 +91,10 @@ iBlockLen       = 1024*4;
 iWinMin         = 256;
 iWinDef         = 2048;
 iWinMax         = 8192;
+iNFFTMin        = 256;
+iNFFTDef        = 512;
+iNFFTMax        = 8192;
 iUpdateInterval = 2;
-iNFFT           = 2^6;
 iIconSize       = 24;
 globsetOutputID = 0;
 
@@ -216,7 +218,7 @@ CalculateSpectrogram();
             
             if bCalcSpectogram
                 OrigSpectrData = 20*log10(abs(...
-                    spectrogram(wavData(:, xx), iWinDef, 'yaxis')));                
+                    spectrogram(wavData(:, xx), iWinDef, [], iNFFTDef, 'yaxis')));                
             end
 
             SpectrInterval(1) = floor(...
@@ -607,13 +609,13 @@ CalculateSpectrogram();
             'Separator', 'on');
         
         %% - Menubar: Fourier Transform Window Size
-        
-        handles.hMenubarWindowSize = uimenu('Label','Window');
-        
+                
         iWinMinLog2 = nextpow2(iWinMin);
         iWinMaxLog2 = nextpow2(iWinMax);
         
         iMaxWinCount = iWinMaxLog2-iWinMinLog2+1;
+        
+        handles.hMenubarWindowSize = uimenu('Label','Window');
         
         for windows=1:iMaxWinCount
             
@@ -633,6 +635,37 @@ CalculateSpectrogram();
             
             
         end    
+        
+        %% - Menubar: Fourier Transform FFT Length
+        
+        iNFFTMinLog2 = nextpow2(iNFFTMin);
+        iNFFTMaxLog2 = nextpow2(iNFFTMax);
+        
+        iMaxNFFTCount = iNFFTMaxLog2-iNFFTMinLog2+1;
+        
+        handles.hMenubarNFFTSize = uimenu('Label','NFFT');
+        
+        for nfft=1:iMaxNFFTCount
+            
+            iNFFTSet = 2^(iNFFTMinLog2+nfft-1);
+            
+            handles.NFFTSize(nfft) = uimenu(...
+                handles.hMenubarNFFTSize, ...
+                'Label',sprintf('%i (2^%i)', ...
+                iNFFTSet, ...
+                iNFFTMinLog2+nfft-1),...
+                'Checked', 'off', ...
+                'Callback',{@setNFFTSize, iNFFTSet});
+            
+            if iNFFTSet == iNFFTDef
+                set(handles.NFFTSize(nfft), 'Checked', 'on')
+            end
+            
+            
+        end    
+        
+        
+        
         %% Get msound going
         
         if bPlaybackSupportFlag
@@ -649,6 +682,19 @@ CalculateSpectrogram();
         set(Object, 'Checked', 'on');
         
         iWinDef = NewWinSize;
+        
+        bCalcSpectogram = 1;
+        CalculateSpectrogram();
+        
+    end
+
+%% Callback on user changing NFFT size
+    function setNFFTSize(Object,~, NewNFFTSize)
+       
+        set(handles.NFFTSize(:), 'Checked', 'off');
+        set(Object, 'Checked', 'on');
+        
+        iNFFTDef = NewNFFTSize;
         
         bCalcSpectogram = 1;
         CalculateSpectrogram();
