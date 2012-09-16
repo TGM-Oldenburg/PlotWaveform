@@ -58,7 +58,7 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName)
 
 
 %DEBUG
-szFileName = 'sample4chanFlip.wav';
+szFileName = 'SampleMid.wav';
 close gcf
 
 if ismac
@@ -82,12 +82,15 @@ myColorsetFace      = [ 051/255 051/255 230/255; ...    % blue
 myColorsetEdge      = [ 051/255 051/255 051/255];       % dark grey
 guiBackgroundColor  = [ 229/255 229/255 229/255];       % light grey
 guiSize             = [ 800 600];
+auxSize             = [ 400 300];
+
 
 %% Set global settings
-szSaveFile  = 'WaveformPlayer.ini';
-iBlockLen   = 1024*2;
-iIconSize   = 24;
-globsetOutputID    = 0;
+szSaveFile      = 'WaveformPlayer.ini';
+iBlockLen       = 1024*1;
+iUpdateInterval = 2;
+iIconSize       = 24;
+globsetOutputID = 0;
 
 %% Set global variables
 PlayIdx         = 1;
@@ -103,6 +106,7 @@ OrigSpectrData  = [];
 routingMatrix   = [];
 stDevices       = [];
 numOutputs      = [];
+iRedrawCounter  = 0;
 
 %% Create prelim. flags
 bPlaySelectionFlag  = 1;
@@ -111,7 +115,7 @@ bIsPlayingFlag      = 0;
 bIsEndOfWaveFlag    = 0;
 bIsPausedFlag       = 0;
 bShowAsWaveform     = 1;
-bShowAsSpectrogram  = 1;
+bShowAsSpectrogram  = 0;
 bCalcSpectogram     = 1;
 bRoutingEnabled     = 1;
 
@@ -176,6 +180,8 @@ vStartEndVal = [...
 
 % vSampleValues = OrigSampleValuesPos;
 
+bMuteChannels = zeros(1, numChannels);
+
 init();
 
 
@@ -183,12 +189,16 @@ CalculateSpectrogram();
 
 % PlotWaveform/SetOriginalZoom;
 
+
+%% Function to retrieve the axes size
     function GetAxesSize
         set(hWaveAxes(1), 'Units', 'Pixels')
         vAxesSize = get(hWaveAxes(1), 'Position');
+        set(hWaveAxes(1), 'Units', 'normalized')
         vAxesSize = vAxesSize(3:4);
     end
 
+%% Function to calculate the spectrogram overlay
     function CalculateSpectrogram
         
         GetAxesSize();
@@ -228,18 +238,20 @@ CalculateSpectrogram();
                 'Parent', hWaveAxes(xx), ...
                 'Tag', 'spectrs', ...
                 'Visible', 'on');
-%             
-%             bShowAsSpectrogram = get (handles.hCheckSpectrogram, 'Value');
-%             switch bShowAsSpectrogram
-%                 case 1
-%                     set(hSpectograms(xx), 'Visible', 'on');
-%                     
-%                 case 0
-%                     set(hSpectograms(xx), 'Visible', 'off');
-%             end
-%             
+
             
-            axis(hWaveAxes(xx) ,'xy', 'tight');
+            bShowAsSpectrogram = get (handles.hCheckSpectrogram, 'Value');
+            switch bShowAsSpectrogram
+                case 1
+                    set(hSpectograms(xx), 'Visible', 'on');
+%                     axis(hWaveAxes(xx) ,'xy', 'tight');
+                case 0
+                    set(hSpectograms(xx), 'Visible', 'off');
+            end
+            
+
+            
+           
             
             colormap(jet); view(0,90);
             
@@ -313,20 +325,14 @@ CalculateSpectrogram();
         set(hRect, 'FaceColor', 'w')
         set(hRect, 'EdgeColor', 'k')
         
-        % set(hOverviewAxes, ...
-        %     'Color', guiBackgroundColor, ...
-        %     'Box', 'off', ...
-        %     'XGrid', 'on', ...
-        %     'XMinorGrid', 'on', ...
-        %     'Layer', 'top');
-        
         set(hOverviewAxes, ...
             'Color', 'w', ...
             'Box', 'off', ...
             'XTickLabel', {''}, ...
             'YTickLabel', {''}, ...
             'XTick', [], ...
-            'YTick', []);
+            'YTick', [], ...
+            'Layer', 'top');
         
         %% Generate player controls
         icons.stop = zeros(iIconSize,iIconSize,3);
@@ -483,7 +489,7 @@ CalculateSpectrogram();
             'HorizontalAlign', 'left');
         
         %% Checkmarks for Waveform and Spectrogram
-         handles.hCheckWaveform = uicontrol(...
+        handles.hCheckWaveform = uicontrol(...
             'Style', 'checkbox', ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
@@ -508,11 +514,32 @@ CalculateSpectrogram();
             'Callback', @SwitchShowSpectrogram, ...
             'Enable', 'on');
         
-       
+        %% Checkmarks for channel muting
+        for channel=1:numChannels      
+            hWaveAxesPos = get(hWaveAxes(channel), 'Position');
+            
+            ChanMuteXPos = hWaveAxesPos(1)+hWaveAxesPos(3)+0.005;
+            
+            handles.hCheckChanMute(channel) = uicontrol(...
+            'Style', 'checkbox', ...
+            'Parent', hFigure, ...
+            'Units', 'normalized', ...
+            'Position', [ChanMuteXPos hWaveAxesPos(2) ...
+             1-ChanMuteXPos-0.001 hWaveAxesPos(4)], ...
+            'BackgroundColor', guiBackgroundColor-0, ...
+            'String', '', ...
+            'FontSize', guiFontSize, ...
+            'Value', bMuteChannels(channel), ...
+            'Callback', @MuteChannel);
+        end
         
-      
-        
-        
+        %% Callback for user changing mute state
+        function MuteChannel(~, ~, ~)
+           
+           checkValue = get(handles.hCheckChanMute(:), 'Value');
+           bMuteChannels = cell2mat(checkValue)';
+           
+        end
         
         %% - Menubar: Input Device Entry
         
@@ -579,7 +606,6 @@ CalculateSpectrogram();
             'Callback',@modifyRouting, ...
             'Separator', 'on');
         
-        
         %% Get msound going
         
         if bPlaybackSupportFlag
@@ -589,7 +615,7 @@ CalculateSpectrogram();
         
     end
 
-
+%% Switching function for the routing matrix
     function setRoutingOnOff(Object, ~, bOnOff)
         
         set(handles.RoutingEnDis, 'Checked', 'off')
@@ -600,15 +626,22 @@ CalculateSpectrogram();
         
     end
 
-
+%% Editfunction to modify the routing matrix
     function modifyRouting(~,~,~)
+        
+        %% Beautifying: Centering the routing matrix
+        set(hFigure,'Units','pixels');
+        vFigSze = get(hFigure, 'Position');
+        auxSize = [...
+            vFigSze(3:4)/2-auxSize(1:2)/2+vFigSze(1:2) ...
+            auxSize(1:2)];
         
         
         hRoutingPanel = figure(...
             'Name', 'Routing Matrix', ...
             'NumberTitle', 'off', ...
             'Resize', 'off', ...
-            'Position', guiSize, ...
+            'Position', auxSize, ...
             'Color', guiBackgroundColor);
         
         set(gcf,'toolbar','none')
@@ -623,7 +656,7 @@ CalculateSpectrogram();
             
         editColumns = true(1,numChannels);
         
-        hTable = uitable(...
+        uitable(...
             'Parent', hPanel, ...
             'Data', routingMatrix, ...
             'Units', 'normalized', ...
@@ -633,7 +666,7 @@ CalculateSpectrogram();
 
     end
 
-
+%% Callback on user editing the routing matrix
     function cellEditCB(Object, ~, ~)
         routingMatrix = get(Object, 'Data');
         
@@ -709,24 +742,8 @@ CalculateSpectrogram();
             mPlaybackData = wavData;
         end
         
-        mPlaybackDataRouted = ...
-            zeros(length(mPlaybackData), numOutputs);
         
-        if bRoutingEnabled
-            
-            for out=1:numOutputs
-                for chan=1:numChannels
-                    mPlaybackDataRouted(:, out) = ...
-                        mPlaybackDataRouted(:, out) + ...
-                        mPlaybackData(:, chan)*routingMatrix(chan, out);
-                end
-            end
-        else
-            for out=1:numOutputs
-                mPlaybackDataRouted(:, out) = mPlaybackData(:, out);
-            end
-        end
-        mPlaybackData = mPlaybackDataRouted;
+       
         
         bIsPlayingFlag = 1;
         bIsPausedFlag  = 0;
@@ -778,30 +795,41 @@ CalculateSpectrogram();
     function whilePlaying()
 
         while bIsPlayingFlag
+            
+            
+            %% Redrawing the Interface
             tic
-            CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
-            szCurrentPos = sprintf('%8.3f s',CurrentPos);
             
-            set(handles.hValueCurrentPos, ...
-                'String', szCurrentPos);
+            if iRedrawCounter == iUpdateInterval
+                
+                iRedrawCounter = 0;
+                
+                CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+                szCurrentPos = sprintf('%8.3f s',CurrentPos);
+                
+                set(handles.hValueCurrentPos, ...
+                    'String', szCurrentPos);
+                
+                set(hOverviewPos, ...
+                    'XData', [CurrentPos CurrentPos]);
+                
+                set(hWavePos, ...
+                    'XData', [CurrentPos CurrentPos]);
+                
+                drawnow;
+                % SUPER INEFFICIENT! ALTERNATIVE?
+            else
+                iRedrawCounter = iRedrawCounter+1;
+            end
             
-            set(hOverviewPos, ...
-                'XData', [CurrentPos CurrentPos]);
-            
-            set(hWavePos, ...
-                'XData', [CurrentPos CurrentPos]);
-            
-            drawnow;
-            % SUPER INEFFICIENT! ALTERNATIVE?
-            
-            
+            %% Actuall Playback actions         
             if PlayIdx+iBlockLen-1 > length(mPlaybackData)
                 
                 % End of wave is reached. Set flag
                 bIsEndOfWaveFlag = 1;
                                 
                 % For left over samples generate ZeroPadded block
-                OutZP = zeros(iBlockLen, numOutputs);
+                OutZP = zeros(iBlockLen, numChannels);
                 
                 % Determine where the padding starts
                 EndOfSamples = length(mPlaybackData(PlayIdx:end, :));
@@ -809,6 +837,8 @@ CalculateSpectrogram();
                 % Fill the vector with the left blocks, leaving the zero
                 % padding at the end to fill the block length
                 OutZP(1:EndOfSamples, :) = mPlaybackData(PlayIdx:end, :);
+                
+                OutZP = RoutingAndMuting(OutZP);
                 
                 % Output
                 T = toc;
@@ -831,8 +861,11 @@ CalculateSpectrogram();
                 
                 T = toc;
                 if bPlaybackSupportFlag
+                    
+                OutZPComplete = RoutingAndMuting(mPlaybackData(PlayIdx:PlayIdx+iBlockLen-1, :))  ;
+                    
                 msound('putsamples', ...
-                    mPlaybackData(PlayIdx:PlayIdx+iBlockLen-1, :));
+                    OutZPComplete);
                 else
                     pause(iBlockLen/fs-T)
                 end
@@ -866,7 +899,42 @@ CalculateSpectrogram();
                 'String', szCurrentPos)
         end
     end
-   
+
+%% Routing and Muting Process
+
+    function ProcessingBlock = RoutingAndMuting(ProcessingBlock)
+        
+        %% Muting by the set checks
+        PreMultiplier = mod(1,bMuteChannels);
+        
+        for mute=1:numChannels
+            ProcessingBlock(:,mute) = PreMultiplier(mute).*ProcessingBlock(:,mute);
+        end
+        
+        %% Routing by the routing matrix
+        ProcessingBlockRouted = ...
+            zeros(length(ProcessingBlock), numOutputs);
+        
+        if bRoutingEnabled
+            
+            for out=1:numOutputs
+                for chan=1:numChannels
+                    ProcessingBlockRouted(:, out) = ...
+                        ProcessingBlockRouted(:, out) + ...
+                        ProcessingBlock(:, chan)*routingMatrix(chan, out);
+                end
+            end
+        else
+            for out=1:numOutputs
+                ProcessingBlockRouted(:, out) = ProcessingBlock(:, out);
+            end
+        end
+        
+        ProcessingBlock = ProcessingBlockRouted;
+        
+        
+    end
+
 %% Callback on user hit: stop
     function CallbackStop(~,~)
                 
