@@ -302,6 +302,8 @@ CalculateSpectrogram();
 %% Set the spectrogram's color depth
     function SetSpectrColordepth
         
+        
+        %% Different approach by completely reworking the CData (too intense)
 %         for xx=1:numel(hSpectrograms)
 %             
 %             if isempty(OrigSpectrCData) || ...
@@ -333,6 +335,8 @@ CalculateSpectrogram();
 %             set(hSpectrograms(xx), 'Cdata', CurSpectrCData{xx});
 %             
 %         end
+
+
         if isempty(OrigColormapVal)
             OrigColormapVal =  get(hWaveAxes(1), 'CLim');
             vColormapVal = OrigColormapVal;
@@ -858,10 +862,13 @@ CalculateSpectrogram();
            set(handles.Colormap(:), 'Checked', 'off');
            set(Object, 'Checked', 'on');
            
-           guiColormapDef = get(Object, 'Label')
+           guiColormapDef = get(Object, 'Label');
+           
            
            for ax=1:numel(hWaveAxes)
-               colormap(hWaveAxes(ax),Object)
+               szEval =  ['colormap(hWaveAxes(' num2str(ax) '),' guiColormapDef ')'];
+
+               eval(szEval);
            end
         end
         
@@ -918,7 +925,7 @@ CalculateSpectrogram();
                 'Callback', @setNewColormapDepth);
             
             %% Label the sliders
-            hLabelSliderMin = uicontrol('Style', 'text', ...
+            uicontrol('Style', 'text', ...
                 'Parent', hPanel, ...
                 'String', 'Lowest', ...
                 'units', 'normalized', ...
@@ -926,7 +933,7 @@ CalculateSpectrogram();
                 'BackgroundColor', guiBackgroundColor-0, ...
                 'HorizontalAlign', 'left');
                 
-            hLabelSliderMin = uicontrol('Style', 'text', ...
+            uicontrol('Style', 'text', ...
                 'Parent', hPanel, ...
                 'String', 'Highest', ...
                 'units', 'normalized', ...
@@ -954,7 +961,7 @@ CalculateSpectrogram();
         end
         
         % Callback to callback: Process new depth values
-        function setNewColormapDepth(Object, ~, ~)
+        function setNewColormapDepth(~, ~, ~)
             
             for pp=1:2
             
