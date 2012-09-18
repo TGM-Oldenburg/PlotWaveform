@@ -61,6 +61,8 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName)
 szFileName = 'TomShort.wav';
 close gcf
 
+
+%% Macintosh notification
 if ismac
     disp('Macintosh is currently not supported.');
     disp('Use PlotWaveformOverview instead.');
@@ -70,6 +72,7 @@ else
     bPlaybackSupportFlag = 1;
 end
 
+%% Set global visuals
 vUpperAxesPos       = [ 0.05    0.45    0.90    0.50];
 vOverviewAxesPos    = [ 0.05    0.23    0.90    0.15];
 
@@ -97,11 +100,10 @@ guiColormaps        = { 'autumn', ...
                         'summer', ...
                         'white', ...
                         'winter' };
-guiColormapDef      = 'jet';
+guiColormapDef      =   'jet';
 guiBackgroundColor  = [ 229/255 229/255 229/255];       % light grey
 guiSize             = [ 800 600];
 auxSize             = [ 400 300];
-
 
 %% Set global settings
 szSaveFile      = 'WaveformPlayer.ini';
@@ -127,11 +129,15 @@ vAxesSize       = [];
 iZoomWidth      = [];
 vStartEndVal    = [];
 OrigSpectrData  = [];
+OrigSpectrCData = [];
+OrigSpectrCLims = [];
 routingMatrix   = [];
 stDevices       = [];
 defaultIDs      = [];
 numOutputs      = [];
 iRedrawCounter  = 0;
+vColormapVal    = [];
+OrigColormapVal = [];
 
 %% Create prelim. flags
 bPlaySelectionFlag  = 1;
@@ -153,7 +159,7 @@ hOverviewAxes   = [];
 hOverviewPos    = [];
 hWavePos        = [];
 hSpecPlots      = [];
-hSpectograms    = [];
+hSpectrograms    = [];
 hAxes           = axes;
 
 
@@ -237,7 +243,8 @@ CalculateSpectrogram();
             
             if bCalcSpectogram
                 OrigSpectrData = 20*log10(abs(...
-                    spectrogram(wavData(:, xx), iWinDef, [], iNFFTDef, 'yaxis')));                
+                    spectrogram(wavData(:, xx), iWinDef, [], iNFFTDef, 'yaxis')));        
+                
             end
 
             SpectrInterval(1) = floor(...
@@ -259,7 +266,7 @@ CalculateSpectrogram();
             
             
             
-            hSpectograms(xx) = imagesc(...
+            hSpectrograms(xx) = imagesc(...
                 vStartEndVal(1:2), ...
                 vStartEndVal(3:4), ...
                 SpectrData, ...
@@ -269,12 +276,13 @@ CalculateSpectrogram();
 
             
             bShowAsSpectrogram = get (handles.hCheckSpectrogram, 'Value');
+            
             switch bShowAsSpectrogram
                 case 1
-                    set(hSpectograms(xx), 'Visible', 'on');
+                    set(hSpectrograms(xx), 'Visible', 'on');
                     axis(hWaveAxes(xx) ,'xy', 'tight');
                 case 0
-                    set(hSpectograms(xx), 'Visible', 'off');
+                    set(hSpectrograms(xx), 'Visible', 'off');
             end
             
             colormap(hWaveAxes(xx), guiColormapDef); 
@@ -283,9 +291,63 @@ CalculateSpectrogram();
             hold(hWaveAxes(xx), 'off')
             
             bCalcSpectogram = 0;
+            OrigColormapVal = [];
+                        
         end
+        
+        SetSpectrColordepth;
+        
     end
 
+%% Set the spectrogram's color depth
+    function SetSpectrColordepth
+        
+%         for xx=1:numel(hSpectrograms)
+%             
+%             if isempty(OrigSpectrCData) || ...
+%                     numel(OrigSpectrCData) < numel(hSpectrograms)
+%                 OrigSpectrCData{xx} = get(hSpectrograms(xx), 'CData');
+%             end
+%             
+%         end
+%         
+%         for xx=1:numel(hSpectrograms)
+%             
+%             lowestCData     = min(min(OrigSpectrCData{xx}));
+%             highestCData    = max(max(OrigSpectrCData{xx}));
+%             
+%             for uu=1:size(OrigSpectrCData{xx},1)
+%                 
+%                 for vv=1:size(OrigSpectrCData{xx},2)
+%                     
+%                     if OrigSpectrCData{xx}(uu,vv) < -100+100*vColormapVal(1)
+%                         CurSpectrCData{xx}(uu,vv) = lowestCData;
+%                     elseif OrigSpectrCData{xx}(uu,vv) > -100+100*vColormapVal(2)
+%                         CurSpectrCData{xx}(uu,vv) = highestCData;
+%                     else
+%                         CurSpectrCData{xx}(uu,vv) = OrigSpectrCData{xx}(uu,vv);
+%                     end
+%                 end
+%             end
+%             
+%             set(hSpectrograms(xx), 'Cdata', CurSpectrCData{xx});
+%             
+%         end
+        if isempty(OrigColormapVal)
+            OrigColormapVal =  get(hWaveAxes(1), 'CLim');
+            vColormapVal = OrigColormapVal;
+        end
+
+
+        for xx=1:numel(hSpectrograms)
+
+            set(hWaveAxes(xx), 'CLim', vColormapVal);
+        end
+
+
+
+    end
+            
 %% Initiation of interface and functionality
     function init
         
@@ -637,7 +699,7 @@ CalculateSpectrogram();
                 vFigSze(3:4)/2-auxSize(1:2)/2+vFigSze(1:2) ...
                 auxSize(1:2)];
             
-            
+            %% Opening new figure
             hRoutingPanel = figure(...
                 'Name', 'Routing Matrix', ...
                 'NumberTitle', 'off', ...
@@ -645,8 +707,8 @@ CalculateSpectrogram();
                 'Position', auxSize, ...
                 'Color', guiBackgroundColor);
             
-            set(gcf,'toolbar','none')
-            set(gcf,'menubar', 'none')
+            set(hRoutingPanel,'toolbar','none')
+            set(hRoutingPanel,'menubar', 'none')
             
             hPanel = uipanel(...
                 'Parent', hRoutingPanel, ...
@@ -783,7 +845,14 @@ CalculateSpectrogram();
             end            
         end    
         
-        %% - - Callback on user changing color map
+        handles.Colormap(numel(guiColormaps)+1) = uimenu(...
+                handles.hMenbuarColormap, ...
+                'Label', 'Modify Colordepth ...', ...
+                'Checked', 'off', ...
+                'Callback', @modifyColormap, ...
+                'Separator', 'on');
+        
+        %% - - Callback on user choosing color map
         function setColormap(Object, ~, ~)
             
            set(handles.Colormap(:), 'Checked', 'off');
@@ -795,7 +864,114 @@ CalculateSpectrogram();
                colormap(hWaveAxes(ax),Object)
            end
         end
+        
+        %% - - Callback on user modifying color map
+        function modifyColormap(~,~,~)
+           
+            FigureHeight = 100;
+            
+            SliderVal(1) = OrigColormapVal(1)*(-1)+OrigColormapVal(1);
+            SliderVal(2) = OrigColormapVal(1)*(-1)+OrigColormapVal(2);
+            
+            %% Beautifying: Centering figure to come
+            set(hFigure,'Units','pixels');
+            vFigSze = get(hFigure, 'Position');
+            auxSize = [...
+                vFigSze(3:4)/2-auxSize(1:2)/2+vFigSze(1:2) ...
+                auxSize(1) FigureHeight];
+            
+            %% Building a new figure
+            hColordepthPanel = figure(...
+                'Name', 'Colormap Depth', ...
+                'NumberTitle', 'off', ...
+                'Resize', 'off', ...
+                'Position', auxSize, ...
+                'Color', guiBackgroundColor);
+            
+            set(hColordepthPanel,'toolbar','none')
+            set(hColordepthPanel,'menubar', 'none')
+            
+            hPanel = uipanel(...
+                'Parent', hColordepthPanel, ...
+                'Title', 'Colormap Depth', ...
+                'Units', 'normalized', ...
+                'Position', [0.02 0.05 0.96 0.9], ...
+                'BackgroundColor', guiBackgroundColor);
+            
+            %% Place sliders to modify high and low
+            handles.hSliderColormapDepth(1) = uicontrol('Style', 'slider',...
+                'Parent', hPanel, ...
+                'Min',SliderVal(1), ...
+                'Max',SliderVal(2), ...
+                'Value',SliderVal(1), ...
+                'units', 'normalized', ...
+                'Position', [0.18 0.5 0.70 0.3], ...
+                'Callback', @setNewColormapDepth);
+            
+            handles.hSliderColormapDepth(2) = uicontrol('Style', 'slider',...
+                'Parent', hPanel, ...
+                'Min',SliderVal(1), ...
+                'Max',SliderVal(2), ...
+                'Value',SliderVal(2), ...
+                'units', 'normalized', ...
+                'Position', [0.18 0.05 0.70 0.3], ...
+                'Callback', @setNewColormapDepth);
+            
+            %% Label the sliders
+            hLabelSliderMin = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', 'Lowest', ...
+                'units', 'normalized', ...
+                'Position', [0.02 0.5 0.15 0.3], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left');
+                
+            hLabelSliderMin = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', 'Highest', ...
+                'units', 'normalized', ...
+                'Position', [0.02 0.05 0.15 0.3], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left'); 
+            
+            %% Show the current slider/depth values
+            handles.hValueColormapDepth(1) = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', sprintf('%3.1f',SliderVal(1)), ...
+                'units', 'normalized', ...
+                'Position', [0.91 0.5 0.08 0.3], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left');
+                
+            handles.hValueColormapDepth(2) = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', sprintf('%3.1f',SliderVal(2)), ...
+                'units', 'normalized', ...
+                'Position', [0.91 0.05 0.08 0.3], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left'); 
+            
+        end
+        
+        % Callback to callback: Process new depth values
+        function setNewColormapDepth(Object, ~, ~)
+            
+            for pp=1:2
+            
+                vColormapVal(pp) = get(handles.hSliderColormapDepth(pp), 'Value');
+                
+                set(handles.hValueColormapDepth(pp), 'String', ...
+                    sprintf('%3.1f',vColormapVal(pp)));
+                
+                vColormapVal(pp) = vColormapVal(pp)- OrigColormapVal(1)*(-1);
 
+            end     
+            
+            SetSpectrColordepth();
+            
+            
+        end
+        
         %% Get msound going
         
         if bPlaybackSupportFlag
@@ -804,9 +980,6 @@ CalculateSpectrogram();
         end
         
     end
-
-
-
 
 
 
@@ -842,14 +1015,14 @@ CalculateSpectrogram();
             case 0
                     for hh=1:length(hSpecPlots)
                         set(hSpecPlots(hh), 'Visible', 'off')
-                        set(hSpectograms(hh), 'Visible', 'off');
+                        set(hSpectrograms(hh), 'Visible', 'off');
                     end
 
             case 1
                     
                     for hh=1:length(hSpecPlots)
                         set(hSpecPlots(hh), 'Visible', 'on')
-                        set(hSpectograms(hh), 'Visible', 'on');
+                        set(hSpectrograms(hh), 'Visible', 'on');
                     end                   
 
         end
