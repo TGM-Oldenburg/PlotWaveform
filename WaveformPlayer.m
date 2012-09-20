@@ -54,7 +54,18 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName)
 %   Ver. 0.20   basic functionality of playback           17-Jul-2012   JW
 %   Ver. 0.21   position mark in all plots                19-Jul-2012   JW
 %   Ver. 0.22   improved behavior at wave's end           20-Jul-2012   JW
-%   Ver. 0.23   
+%   Ver. 0.23   added support for channel routing matrix  27-Jul-2012   JW
+%   Ver. 0.24   bugfixes: detection of default audio      13-Sep-2012   JW
+%               output now working properly, routing 
+%               matrix now completely deactivateable
+%               live.
+%   Ver. 0.25   bugfixes: first axes now behaving as      15-Sep-2012   JW
+%               as expected (on change of fig size).
+%   Ver. 0.26   added: menubar-item for window size       17-Sep-2012   JW
+%               and NFFT. fixed: proper asynchronous
+%               updating of the GUI.
+%   Ver. 0.27   added: menubar item for colormap          18-Sep-2012   JW
+%               (choice and change of depth)
 
 
 %DEBUG
@@ -83,7 +94,7 @@ myColorsetFace      = [ 051/255 051/255 230/255; ...    % blue
                         230/255 051/255 230/255; ...
                         051/255 230/255 230/255];
 myColorsetEdge      = [ 051/255 051/255 051/255];       % dark grey
-guiColormaps        = { 'autumn', ...
+myColormaps         = { 'autumn', ...
                         'bone', ...
                         'colorcube', ...
                         'cool', ...
@@ -129,8 +140,6 @@ vAxesSize       = [];
 iZoomWidth      = [];
 vStartEndVal    = [];
 OrigSpectrData  = [];
-OrigSpectrCData = [];
-OrigSpectrCLims = [];
 routingMatrix   = [];
 stDevices       = [];
 defaultIDs      = [];
@@ -285,8 +294,11 @@ CalculateSpectrogram();
                     set(hSpectrograms(xx), 'Visible', 'off');
             end
             
-            colormap(hWaveAxes(xx), guiColormapDef); 
-%             view(0,90);
+            szEval = ['colormap(hWaveAxes(' num2str(xx) '),' guiColormapDef ');'];
+            
+            eval(szEval);
+            
+            %             view(0,90);
             
             hold(hWaveAxes(xx), 'off')
             
@@ -337,18 +349,19 @@ CalculateSpectrogram();
 %         end
 
 
-        if isempty(OrigColormapVal)
-            OrigColormapVal =  get(hWaveAxes(1), 'CLim');
-            vColormapVal = OrigColormapVal;
+        if bShowAsSpectrogram
+
+            if isempty(OrigColormapVal)
+                OrigColormapVal =  get(hWaveAxes(1), 'CLim');
+                vColormapVal = OrigColormapVal;
+            end
+
+
+            for xx=1:numel(hSpectrograms)
+                set(hWaveAxes(xx), 'CLim', vColormapVal);
+            end
+
         end
-
-
-        for xx=1:numel(hSpectrograms)
-
-            set(hWaveAxes(xx), 'CLim', vColormapVal);
-        end
-
-
 
     end
             
@@ -836,22 +849,24 @@ CalculateSpectrogram();
         
         handles.hMenbuarColormap = uimenu('Label','Colormap');
         
-        for nn=1:numel(guiColormaps)
+        for nn=1:numel(myColormaps)
                         
+            szColormap = regexprep(myColormaps{nn},'(\<[a-z])','${upper($1)}');
+            
             handles.Colormap(nn) = uimenu(...
                 handles.hMenbuarColormap, ...
-                'Label', guiColormaps{nn}, ...
+                'Label', szColormap, ...
                 'Checked', 'off', ...
                 'Callback', @setColormap);
             
-            if strcmpi(guiColormaps{nn},guiColormapDef)
+            if strcmpi(myColormaps{nn},guiColormapDef)
                 set(handles.Colormap(nn), 'Checked', 'on')
             end            
         end    
         
-        handles.Colormap(numel(guiColormaps)+1) = uimenu(...
+        handles.Colormap(numel(myColormaps)+1) = uimenu(...
                 handles.hMenbuarColormap, ...
-                'Label', 'Modify Colordepth ...', ...
+                'Label', 'Modify ...', ...
                 'Checked', 'off', ...
                 'Callback', @modifyColormap, ...
                 'Separator', 'on');
@@ -862,7 +877,7 @@ CalculateSpectrogram();
            set(handles.Colormap(:), 'Checked', 'off');
            set(Object, 'Checked', 'on');
            
-           guiColormapDef = get(Object, 'Label');
+           guiColormapDef = lower(get(Object, 'Label'));
            
            
            for ax=1:numel(hWaveAxes)
@@ -1014,6 +1029,8 @@ CalculateSpectrogram();
 %% Switching function for the spectrum display
     function SwitchShowSpectrogram(object,~)
         
+        CalculateSpectrogram();
+        
         bShowAsSpectrogram = get(object, 'Value');
         
         hSpecPlots = findobj('Tag', 'spectrs');
@@ -1022,14 +1039,12 @@ CalculateSpectrogram();
             case 0
                     for hh=1:length(hSpecPlots)
                         set(hSpecPlots(hh), 'Visible', 'off')
-                        set(hSpectrograms(hh), 'Visible', 'off');
                     end
 
             case 1
                     
                     for hh=1:length(hSpecPlots)
                         set(hSpecPlots(hh), 'Visible', 'on')
-                        set(hSpectrograms(hh), 'Visible', 'on');
                     end                   
 
         end
