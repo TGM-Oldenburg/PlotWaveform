@@ -66,10 +66,12 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName)
 %               updating of the GUI.
 %   Ver. 0.27   added: menubar item for colormap          18-Sep-2012   JW
 %               (choice and change of depth)
+%   Ver. 0.28   bugfixes: activation of spectrogram       20-Sep-2012   JW
+%               now works without resetting 
 
 
 %DEBUG
-szFileName = 'TomShort.wav';
+%szFileName = 'TomShort.wav';
 close gcf
 
 
