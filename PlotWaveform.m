@@ -143,7 +143,7 @@ iPlotBlockwiseThreshold = 16384;
 % setting threshold below which the samples are plotted with chosen markers
 iPlotMarkersThreshold = 128;
 
-bAlphaBlendFlag = 0;
+bAlphaBlendFlag = 1;
 % bAlphaBlendOn == 0 --> disable alphablending of stereo data
 % bAlphaBlendOn == 1 --> enable alphablending of stereo data
 
@@ -151,7 +151,7 @@ bPlotBlockwiseFlag = 1;
 % bPlotBlockwiseFlag == 1 --> waveform blockwise (default)
 % bPlotBlockwiseFlag == 0 --> waveform
 
-bChannelViewFlag = 1;
+bChannelViewFlag = 0;
 % bChannelViewFlag == 0 --> display stereo data in one plot
 % bChannelViewFlag == 1 --> display stereo data in two seperate plots
 
