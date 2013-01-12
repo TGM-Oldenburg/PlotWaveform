@@ -68,6 +68,10 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
 %                       additional modifications on the plot, made by the
 %                       superior function or script.
 %
+%   'Axes':             user defined axes handle in which the waveform is
+%                       desired to be plotted in. This is especially important
+%                       if the function is used in multi-axes figures.
+%
 %   'Verbose':          integer to which to set the verbose logging. While
 %                       future versions may offer more depth in verbose,
 %                       right now only 0 (off) and 1 (on) are supported.
@@ -106,7 +110,7 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.70
+% VERSION 0.80
 %   Author: Jan Willhaus, Joerg Bitzer (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -129,6 +133,8 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
 %   Ver. 0.60   supports PlotWaveformOverview function    27-Feb-2012   JW
 %   Ver. 0.61   code cleaning, updating the help info     09-Mar-2012   JW
 %   Ver. 0.70   code cleaning again. ready for public     01-Jun-2012   JW
+%   Ver. 0.71   fixed some UI glitches due to use of gca  12-jan-2013   JW
+%   Ver. 0.80   added 'axes' behavioral setting           12-Jan-2013   JW
 
 
 %% settings default values
@@ -181,6 +187,7 @@ bOrigPlotWithMarkersFlag = [];
 vZoomPosition = [];
 FileSize = [];
 hParent = [];
+AxesToUse = [];
 myPostZoomAction = @NOP;
 iZoomMode = 0;
 iVerbose = 0;
@@ -278,7 +285,17 @@ varargin = processInputParameters(varargin);
                 iZoomMode = cParameters{kk +1};
                 valuesToDelete = [valuesToDelete kk:kk+1];
             end
-            
+            if ischar(arg) && strcmpi(arg,'Axes')
+                AxesToUse = cParameters{kk +1};
+                valuesToDelete = [valuesToDelete kk:kk+1];
+                % This is not the perfect way to go for Axes definitions. MATLAB
+                % internal functions usually receive Axes handles via the first
+                % input argument before all others (check 'help plot') even
+                % though the first input argument is normally already plottable
+                % data. So there is a catch to get the Axes handle out of the
+                % Argin and use it. THIS SHOULD BE IMPLEMENTED IN A FUTURE
+                % RELEASE OF PLOTWAVEFORM.
+            end
         end
         
         cParameters(valuesToDelete) = [];
@@ -309,20 +326,23 @@ ChannelViewSet();
 
 %% building the figure and its axes
     function ChannelViewSet()
-        myAxes(1) = gca;
-        myFigure = gcf;
+        if ~isempty(AxesToUse)
+            myAxes(1) = AxesToUse;
+        else
+            myAxes(1) = gca;
+        end
+        myFigure = get(myAxes(1), 'Parent');
         hParent = myAxes;
-        set(gca, 'units', 'normalized')
-        pos = get(gca, 'position');
+        set(hParent, 'units', 'normalized')
+        pos = get(hParent, 'position');
         
         if bChannelViewFlag == 1
             for channel=1:numChannels
-                set(gca, 'position', ...
+                set(myAxes(channel), 'position', ...
                     [pos(1) ...
                     pos(2)+pos(4)*(channel-1)/(numChannels) ...
                     pos(3) ...
                     (1/(numChannels)*pos(4))])
-                myAxes(channel) = gca;
                 if channel ~= numChannels
                     myAxes(channel+1) = axes;
                 end
@@ -345,8 +365,8 @@ end
             tic
         end
         if ~bReplotOriginalValuesFlag
-            set(gca, 'units', 'Pixel')
-            pos = get(gca, 'position');
+            set(hParent, 'units', 'Pixel')
+            pos = get(hParent, 'position');
             if nargin == 1
                 plotWidth = iManualPlotWidth;
             elseif nargin == 2
@@ -357,7 +377,7 @@ end
             else
                 plotWidth = floor(pos(3));
             end
-            set(gca, 'units', 'normalized')
+            set(hParent, 'units', 'normalized')
             
             if bAutoAdjustYAxisFlag && length(StartEndVal) > 2
                 StartEndVal(3 : 4) = [];
