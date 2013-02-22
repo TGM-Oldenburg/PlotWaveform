@@ -33,7 +33,8 @@ szFileName = 'TomShort.wav';
 % figure
 % set(gcf, 'Position', [80 536 1760 420]);
 % testing internal print via function handle
-[hFigure hAxes hOverview] = PlotWaveformOverview(szFileName);
+% [hFigure hAxes hOverview] = PlotWaveformOverview(szFileName);
+PlotWaveformOverview(szFileName, 'ShowWaveOverview', 1, 'ShowPositionSliders', 1);
 %[hFigure hAxes hPrint]= PlotWaveform(szFileName,'ChannelView',1, 'SampleViewStyle',1);
 % hPrint(gcf,'-depsc',sprintf('%s-SampleViewStyleTest.eps',szFileName),'-painters','PaperPosition', [2 2 16 10],'SilentPrint',0) 
 

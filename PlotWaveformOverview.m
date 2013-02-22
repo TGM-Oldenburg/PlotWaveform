@@ -67,8 +67,11 @@ function [hFigure myAxes hOverviewAxes] = PlotWaveformOverview(szFileName, varar
 %   Ver. 0.4    code cleaning, ready for public             01-Jun-2012     JW
 
 
+%% evaluation of input data
+if nargin == 0, help(mfilename); return; end;
+
 bShowSlidersFlag = 1;
-bShowOverviewFlag = 0;
+bShowOverviewFlag = 1;
 vUpperAxesPos = [0.05 0.25 0.9 0.7];
 vOverviewAxesPos = [0.05 0.05 0.9 0.15];
 vZoomPosition = [];
@@ -81,6 +84,7 @@ myColorsetEdge = [0.2 0.2 0.2];
 numColorsFace = size(myColorsetFace,1);
 numColorsEdge = size(myColorsetEdge,1);
 
+cParameters = processInputParameters(cParameters);
 
     function cParameters = processInputParameters(cParameters)
         valuesToDelete = [];
@@ -160,31 +164,32 @@ end
         set(hRect, 'Position', vZoomPosition);
     end
 
-hOverviewAxes = axes;
-set(gca, 'units', 'normalized')
-set(gca, 'Position', vOverviewAxesPos);
-for channel=1:numChannels
-    hWaveView = fill([OrigTime_vek OrigTime_vek(end:-1:1)], ...
-        [OrigSampleValuesPos(:,channel); ...
-        flipud(OrigSampleValuesNeg(:,channel))],'b');
-    set(hWaveView,'FaceAlpha',0.5, 'EdgeAlpha',0.6, ...
-        'FaceColor',myColorsetFace(mod ...
-        (channel-1, numColorsFace)+1,:), ...
-        'EdgeColor',myColorsetEdge(mod ...
-        (channel-1, numColorsEdge)+1,:));
-    hold on;
+if bShowOverviewFlag
+    hOverviewAxes = axes;
+    set(gca, 'units', 'normalized')
+    set(gca, 'Position', vOverviewAxesPos);
+    for channel=1:numChannels
+        hWaveView = fill([OrigTime_vek OrigTime_vek(end:-1:1)], ...
+            [OrigSampleValuesPos(:,channel); ...
+            flipud(OrigSampleValuesNeg(:,channel))],'b');
+        set(hWaveView,'FaceAlpha',0.5, 'EdgeAlpha',0.6, ...
+            'FaceColor',myColorsetFace(mod ...
+            (channel-1, numColorsFace)+1,:), ...
+            'EdgeColor',myColorsetEdge(mod ...
+            (channel-1, numColorsEdge)+1,:));
+        hold on;
+    end
+    axis(OrigStartEndVal);
+    hold off;
+    
+    axes(hOverviewAxes);
+    if isempty(hRect)
+        hRect = rectangle;
+    end
+    set(hRect, 'Position', vZoomPosition);
+    set(hRect, 'FaceColor', [0.9 0.9 1])
+    set(hRect, 'EdgeColor', 'r')
 end
-axis(OrigStartEndVal);
-hold off;
-
-axes(hOverviewAxes);
-if isempty(hRect)
-    hRect = rectangle;
-end
-set(hRect, 'Position', vZoomPosition);
-set(hRect, 'FaceColor', [0.9 0.9 1])
-set(hRect, 'EdgeColor', 'r')
-
 
     function myPostActionCallback(ActualRectPosition)
         
