@@ -137,6 +137,9 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
 %   Ver. 0.80   added 'axes' behavioral setting           12-Jan-2013   JW
 
 
+%% evaluation of input data
+if nargin == 0, help(mfilename); return; end;
+
 %% settings default values
 % default Colorset
 myColorsetFace = [0.4 0.4 1; 1 0.4 0.4; 0.75 0.75 0.5; 0.5 0.75 0.5; ...
@@ -160,6 +163,10 @@ bPlotBlockwiseFlag = 1;
 bChannelViewFlag = 0;
 % bChannelViewFlag == 0 --> display stereo data in one plot
 % bChannelViewFlag == 1 --> display stereo data in two seperate plots
+
+bDisableZoomOptions = 0;
+% bDisableZoomOptions == 0 --> Zoom options working normally (default)
+% bDisableZoomOptions == 1 --> Zoom options disabled
 
 %% creating global variables
 bPrintFlag = 0;
@@ -192,8 +199,6 @@ myPostZoomAction = @NOP;
 iZoomMode = 0;
 iVerbose = 0;
 
-%% evaluation of input data
-if nargin == 0, help(mfilename); return; end;
 
 if ischar(szFileNameOrData)
     [FileSize,fs] = wavread(szFileNameOrData,'size');
@@ -295,6 +300,10 @@ varargin = processInputParameters(varargin);
                 % data. So there is a catch to get the Axes handle out of the
                 % Argin and use it. THIS SHOULD BE IMPLEMENTED IN A FUTURE
                 % RELEASE OF PLOTWAVEFORM.
+            end
+            if ischar(arg) && strcmpi(arg,'DisableZoomOptions')
+                bDisableZoomOptions = cParameters{kk +1};
+                valuesToDelete = [valuesToDelete kk:kk+1];
             end
         end
         
@@ -562,20 +571,20 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
                                 'Color',myColorsetFace(mod ...
                                 (channel-1, numColorsFace)+1,:), ...
                                 'Parent', hParent, ...
-                                    'Tag', 'pwf_plots');
+                                'Tag', 'pwf_plots');
                         case 2
                             plot(timeVec,SampleValuesPos(:,channel), ...
                                 'Color',myColorsetFace(mod ...
                                 (channel-1, numColorsFace)+1,:), ...
                                 'Parent', hParent, ...
-                                    'Tag', 'pwf_plots');
+                                'Tag', 'pwf_plots');
                     end
                 else
                     plot(timeVec,SampleValuesPos(:,channel), ...
                         'Color',myColorsetFace(mod ...
                         (channel-1, numColorsFace)+1,:), ...
                         'Parent', hParent, ...
-                                    'Tag', 'pwf_plots');
+                        'Tag', 'pwf_plots');
                 end
             elseif bPlotBlockwiseFlag == 1
                 hWaveView = fill([timeVec timeVec(end:-1:1)],...
@@ -605,9 +614,9 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
                 if channel == 1
                     set(hParent, 'XAxisLocation', 'top')
                 end
-                 if channel > 1 && bChannelViewFlag == 1
+                if channel > 1 && bChannelViewFlag == 1
                     set(hParent, 'xticklabel', [])
-                 end
+                end
             else
                 if channel ~= numChannels && bChannelViewFlag == 1
                     set(hParent, 'xticklabel', [])
@@ -677,7 +686,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
       if isequal(szSaveFileName,0) == 0 || isequal(szSaveFilePath,0) == 0
           szSaveFileNamePath = sprintf('%s%s', szSaveFilePath, szSaveFileName);
           szSaveFormat = {'-depsc', '-djpeg', '-dpdf'};
-          set(gcf, 'renderer', 'painters');
+%           set(gcf, 'renderer', 'painters');
           set(gcf, 'PaperPositionMode', 'manual');
           print(gcf,szSaveFormat{szSaveFilterIndex}, ...
               sprintf('-r%i', iPrintResolution),szSaveFileNamePath)
@@ -759,60 +768,64 @@ myPrint=@internalPrint;
 %     end
 
 %% custom zoom menu build-up
-hMenuSave = findall(gcf,'tag','Standard.SaveFigure');
-set(hMenuSave, 'ClickedCallback', @SetPrintResolution);
-zoom('off')
-set(zoom,'UIContextMenu',myZoomMenu);
-
-% Option to fully reset the zoom on plot to its original view
-uimenu(myZoomMenu, ...
-    'Label', 'Reset to Original View', ...
-    'Callback', @SetOriginalZoom);
-
-% Submenu to enable or disable ChannelView (Not implemented yet)
-% itemMyZoomChannelView = uimenu(myZoomMenu, ...
-%     'Label', 'ChannelView');
-% itemMyZoomEnableChannelView = uimenu(itemMyZoomChannelView, ...
-%     'Label', 'Enable ', ... 
-%     'Callback', {@SetChannelView, 1});
-% itemMyZoomDisableChannelView = uimenu(itemMyZoomChannelView, ...
-%     'Label', 'Disable', ...
-%     'Callback', {@SetChannelView, 0});
-
-% Submenu to choose direction of zoom-process (horizontal/vertical/both)
-itemMyZoomDirections = uimenu(myZoomMenu, ...
-    'Label', 'Zoom Options');
-itemMyZoomUnconst = uimenu(itemMyZoomDirections, ...
-    'Label', 'Unconstrained Zoom', ...
-    'Callback', @UnconstrainedZoom, ...
-    'Checked', 'on');
-itemMyZoomHoriOnly = uimenu(itemMyZoomDirections, ...
-    'Label', 'Horizontal Zoom Only', ...
-    'Callback', @HorizontalZoomOnly);
-itemMyZoomHoriOnlyAutoVert = uimenu(itemMyZoomDirections, ...
-    'Label', '- Auto-Adjust Vertically', ...
-    'Callback', @HorizontalZoomOnlyAutoVert);
-itemMyZoomVertOnly = uimenu(itemMyZoomDirections, ...
-    'Label', 'Vertical Zoom Only', ...
-    'Callback', @VerticalZoomOnly);
-
-% Submenu to choose desired sample-exact view
-itemMyZoomSampleView = uimenu(myZoomMenu, ...
-    'Label', 'Sample-exact View');
-itemMyZoomShowStems = uimenu(itemMyZoomSampleView, ...
-    'Label', 'Show as stems', ...
-    'Callback', {@SetSampleViewStyle, 0}, ...
-    'Checked', 'on');
-itemMyZoomShowStairs = uimenu(itemMyZoomSampleView, ...
-    'Label', 'Show as stairs', ...
-    'Callback',  {@SetSampleViewStyle, 1});
-itemMyZoomShowPlot = uimenu(itemMyZoomSampleView, ...
-    'Label', 'Show as plot', ...
-    'Callback',  {@SetSampleViewStyle, 2});
-% SetSampleViewStyle([],[],bSampleViewStyleFlag);
-
-
-zoom('on')
+if ~bDisableZoomOptions
+    
+    hMenuSave = findall(gcf,'tag','Standard.SaveFigure');
+    set(hMenuSave, 'ClickedCallback', @SetPrintResolution);
+    zoom('off')
+    set(zoom,'UIContextMenu',myZoomMenu);
+    
+    % Option to fully reset the zoom on plot to its original view
+    uimenu(myZoomMenu, ...
+        'Label', 'Reset to Original View', ...
+        'Callback', @SetOriginalZoom);
+    
+    % Submenu to enable or disable ChannelView (Not implemented yet)
+    % itemMyZoomChannelView = uimenu(myZoomMenu, ...
+    %     'Label', 'ChannelView');
+    % itemMyZoomEnableChannelView = uimenu(itemMyZoomChannelView, ...
+    %     'Label', 'Enable ', ...
+    %     'Callback', {@SetChannelView, 1});
+    % itemMyZoomDisableChannelView = uimenu(itemMyZoomChannelView, ...
+    %     'Label', 'Disable', ...
+    %     'Callback', {@SetChannelView, 0});
+    
+    % Submenu to choose direction of zoom-process (horizontal/vertical/both)
+    itemMyZoomDirections = uimenu(myZoomMenu, ...
+        'Label', 'Zoom Options');
+    itemMyZoomUnconst = uimenu(itemMyZoomDirections, ...
+        'Label', 'Unconstrained Zoom', ...
+        'Callback', @UnconstrainedZoom, ...
+        'Checked', 'on');
+    itemMyZoomHoriOnly = uimenu(itemMyZoomDirections, ...
+        'Label', 'Horizontal Zoom Only', ...
+        'Callback', @HorizontalZoomOnly);
+    itemMyZoomHoriOnlyAutoVert = uimenu(itemMyZoomDirections, ...
+        'Label', '- Auto-Adjust Vertically', ...
+        'Callback', @HorizontalZoomOnlyAutoVert);
+    itemMyZoomVertOnly = uimenu(itemMyZoomDirections, ...
+        'Label', 'Vertical Zoom Only', ...
+        'Callback', @VerticalZoomOnly);
+    
+    % Submenu to choose desired sample-exact view
+    itemMyZoomSampleView = uimenu(myZoomMenu, ...
+        'Label', 'Sample-exact View');
+    itemMyZoomShowStems = uimenu(itemMyZoomSampleView, ...
+        'Label', 'Show as stems', ...
+        'Callback', {@SetSampleViewStyle, 0}, ...
+        'Checked', 'on');
+    itemMyZoomShowStairs = uimenu(itemMyZoomSampleView, ...
+        'Label', 'Show as stairs', ...
+        'Callback',  {@SetSampleViewStyle, 1});
+    itemMyZoomShowPlot = uimenu(itemMyZoomSampleView, ...
+        'Label', 'Show as plot', ...
+        'Callback',  {@SetSampleViewStyle, 2});
+    % SetSampleViewStyle([],[],bSampleViewStyleFlag);
+    
+    
+    zoom('on')
+    
+end
 
 
 if bShowXAxisAboveFlag
@@ -825,9 +838,9 @@ switch iZoomMode
     case 1
         HorizontalZoomOnly;
     case 2
-        HorizontalZoomOnlyAutoVert
+        HorizontalZoomOnlyAutoVert;
     case 3
-        VerticalZoomOnly
+        VerticalZoomOnly;
 end
 
 
