@@ -99,7 +99,6 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
 %   OrigSampleValuesPos:returns the original sample values of the positive
 %                       halfshaft to a superior function or script
 %                        
-%
 %   OrigSampleValuesNeg:returns the original sample values of the negative
 %                       halfshaft to a superior function or script
 %
@@ -110,32 +109,48 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.80
+% VERSION 0.91
 %   Author: Jan Willhaus, Joerg Bitzer (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
 %   Version History:
-%   Ver. 0.01   initial proof of concept script           10-Aug-2011   JB
-%   Ver. 0.10   inital build of the function              27-Aug-2011   JW
-%   Ver. 0.11   implementing mono & stereo view           31-Aug-2011   JW
-%   Ver. 0.12   debugging second zoom layer               01-Sep-2011   JW
-%   Ver. 0.21   implementing two-axis view for stereo     07-Sep-2011   JW
-%   Ver. 0.22   adding possibility to read multichannel   08-Sep-2011   JW
-%   Ver. 0.23   improvements on multi-axis view           15-Sep-2011   JW
-%   Ver. 0.24   debugging zoom layer switch               22-Sep-2011   JW
-%   Ver. 0.25   improvements on second zoom layer         28-Sep-2011   JW
-%   Ver. 0.30   implementing customized zoom menu         12-Oct-2011   JW
-%   Ver. 0.31   debugging customized zoom menu            23-Oct-2011   JW
-%   Ver. 0.32   code cleaning, killing matlab warnings    01-Dec-2011   JW
-%   Ver. 0.40   implementing print-functionhandle         30-Jan-2012   JW
-%   Ver. 0.50   implementing wave-overview                15-Feb-2012   JW
-%   Ver. 0.51   fixed faulty zoom extract                 16-Feb-2012   JW
-%   Ver. 0.60   supports PlotWaveformOverview function    27-Feb-2012   JW
-%   Ver. 0.61   code cleaning, updating the help info     09-Mar-2012   JW
-%   Ver. 0.70   code cleaning again. ready for public     01-Jun-2012   JW
-%   Ver. 0.71   fixed some UI glitches due to use of gca  12-jan-2013   JW
-%   Ver. 0.80   added 'axes' behavioral setting           12-Jan-2013   JW
-
+%   Ver. 0.01   initial proof of concept script             10-Aug-2011     JB
+%   Ver. 0.10   inital build of the function                27-Aug-2011     JW
+%   Ver. 0.11   implementing mono & stereo view             31-Aug-2011     JW
+%   Ver. 0.12   debugging second zoom layer                 01-Sep-2011     JW
+%   Ver. 0.21   implementing two-axis view for stereo       07-Sep-2011     JW
+%   Ver. 0.22   adding possibility to read multichannel     08-Sep-2011     JW
+%   Ver. 0.23   improvements on multi-axis view             15-Sep-2011     JW
+%   Ver. 0.24   debugging zoom layer switch                 22-Sep-2011     JW
+%   Ver. 0.25   improvements on second zoom layer           28-Sep-2011     JW
+%   Ver. 0.30   implementing customized zoom menu           12-Oct-2011     JW
+%   Ver. 0.31   debugging customized zoom menu              23-Oct-2011     JW
+%   Ver. 0.32   code cleaning, killing matlab warnings      01-Dec-2011     JW
+%   Ver. 0.40   implementing print-functionhandle           30-Jan-2012     JW
+%   Ver. 0.50   implementing wave-overview                  15-Feb-2012     JW
+%   Ver. 0.51   fixed faulty zoom extract                   16-Feb-2012     JW
+%   Ver. 0.60   supports PlotWaveformOverview function      27-Feb-2012     JW
+%   Ver. 0.61   code cleaning, updating the help info       09-Mar-2012     JW
+%   Ver. 0.70   code cleaning again. ready for public       01-Jun-2012     JW
+%   Ver. 0.71   fixed some UI glitches due to use of gca    12-jan-2013     JW
+%   Ver. 0.80   added 'axes' behavioral setting             12-Jan-2013     JW
+%
+%   Ver. 0.90   tons of improvements due to extended        25-Feb-2013     JW
+%               usage in WaveformPlayer:
+%               * fixed heavy glitches in terms of multi-
+%                 axes and -figure use: The behavior of the
+%                 'Axes' function property now works and
+%                 allows the user to plot waveforms in any
+%                 already given axes.
+%               * reset to original values now works 
+%                 correctly when ChannelView is off and 
+%                 supports alpha blending in this state.
+%               * other small bugfixes and improvements.
+%
+%   Ver. 0.91   Fixed the multi-axes behavior. PWF can     09-Mar-2013     JW
+%               now be placed in axes even with channel
+%               view activated. All channels will be 
+%               plotted in place of the "parent" axes.
 
 %% evaluation of input data
 if nargin == 0, help(mfilename); return; end;
@@ -353,7 +368,7 @@ ChannelViewSet();
                     pos(3) ...
                     (1/(numChannels)*pos(4))])
                 if channel ~= numChannels
-                    myAxes(channel+1) = axes;
+                    myAxes(channel+1) = axes('Parent', myFigure);
                 end
             end
         end
@@ -362,7 +377,7 @@ ChannelViewSet();
 
 %% doing the math on samples
 ReadAndComputeMaxData;
-hZoom = zoom;
+hZoom = zoom(hParent);
 set(hZoom,'ActionPostCallback',@PostCallbackWithLims);
 
 if isempty(get(gcf, 'ResizeFcn'))
@@ -456,6 +471,9 @@ end
             
             if bAlphaBlendFlag == 1;
                 bAlphaBlendOn = 1;
+                if isempty(bOrigAlphaBlendOn)
+                    bOrigAlphaBlendOn = bAlphaBlendOn;
+                end
             end
             if length(StartEndVal) == 2
                 StartEndVal(3) = ... 
@@ -643,7 +661,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
         set(itemMyZoomHoriOnly, 'Checked', 'off')
         set(itemMyZoomVertOnly, 'Checked', 'off')
         set(itemMyZoomHoriOnlyAutoVert, 'Checked', 'off')
-        set(zoom,'Motion','both','Enable','on')
+        set(hZoom,'Motion','both','Enable','on')
         bAutoAdjustYAxisFlag = 0;
     end
 
@@ -652,7 +670,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
         set(itemMyZoomHoriOnly, 'Checked', 'on')
         set(itemMyZoomHoriOnlyAutoVert, 'Checked', 'off')
         set(itemMyZoomVertOnly, 'Checked', 'off')
-        set(zoom,'Motion','horizontal','Enable','on')
+        set(hZoom,'Motion','horizontal','Enable','on')
         bAutoAdjustYAxisFlag = 0;
     end
 
@@ -661,7 +679,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
         set(itemMyZoomHoriOnly, 'Checked', 'on')
         set(itemMyZoomHoriOnlyAutoVert, 'Checked', 'on')
         set(itemMyZoomVertOnly, 'Checked', 'off')
-        set(zoom,'Motion','horizontal','Enable','on')
+        set(hZoom,'Motion','horizontal','Enable','on')
         bAutoAdjustYAxisFlag = 1;
     end
 
@@ -670,7 +688,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
         set(itemMyZoomHoriOnly, 'Checked', 'off')
         set(itemMyZoomHoriOnlyAutoVert, 'Checked', 'off')
         set(itemMyZoomVertOnly, 'Checked', 'on')
-        set(zoom,'Motion','vertical','Enable','on')
+        set(hZoom,'Motion','vertical','Enable','on')
         bAutoAdjustYAxisFlag = 0;
     end
 
@@ -772,8 +790,8 @@ if ~bDisableZoomOptions
     
     hMenuSave = findall(gcf,'tag','Standard.SaveFigure');
     set(hMenuSave, 'ClickedCallback', @SetPrintResolution);
-    zoom('off')
-    set(zoom,'UIContextMenu',myZoomMenu);
+    zoom(hParent, 'off')
+    set(hZoom,'UIContextMenu',myZoomMenu);
     
     % Option to fully reset the zoom on plot to its original view
     uimenu(myZoomMenu, ...
@@ -823,15 +841,15 @@ if ~bDisableZoomOptions
     % SetSampleViewStyle([],[],bSampleViewStyleFlag);
     
     
-    zoom('on')
+    zoom(hParent, 'on')
     
 end
 
-
-if bShowXAxisAboveFlag
-    set(gcf,'toolbar','none')
-    set(gcf,'menubar', 'none')
-end
+% 
+% if bShowXAxisAboveFlag
+%     set(gcf,'toolbar','none')
+%     set(gcf,'menubar', 'none')
+% end
 
 
 switch iZoomMode
