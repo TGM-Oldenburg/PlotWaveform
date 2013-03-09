@@ -1,4 +1,4 @@
-function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName)
+function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName, varargin)
 %PLOTWAVEFORMPLAYER    waveform plot with player functionality
 %   PlotWaveform plots the waveform of a WAVE-file, or vector of WAVE-data
 %   using a block by block mean calculation algorithm. WAVE-data first gets
@@ -30,6 +30,23 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName)
 %
 %--------------------------------------------------------------------------
 %
+%   Possible function behavior settings:
+%   ------------------------------------
+%
+%   'Parent':           user defined UI handle of a figure() or uipanel() in
+%                       which the WFP is supposed to be placed if the function
+%                       is used in a multi-figure, or multi-panel environment
+%
+%
+%       NOTE: WaveformPlayer supports all the behavioral settings that
+%       PlotWaveform itself does, with except for the following. Those are used
+%       internally by the waveform player and are therefore not available for 
+%       the end-user:
+%
+%       ShowXAxisAbove, PostZoomAction, ChannelView, ZoomMode
+%
+%--------------------------------------------------------------------------
+%
 %   Output Parameter:
 %   -----------------
 %
@@ -49,31 +66,36 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName)
 %   applied licence see EOF
 %
 %   Version History:
-%   Ver. 0.01   initial creation of function              16-Jul-2012   JW
-%   Ver. 0.10   first working build                       16-Jul-2012   JW
-%   Ver. 0.20   basic functionality of playback           17-Jul-2012   JW
-%   Ver. 0.21   position mark in all plots                19-Jul-2012   JW
-%   Ver. 0.22   improved behavior at wave's end           20-Jul-2012   JW
-%   Ver. 0.23   added support for channel routing matrix  27-Jul-2012   JW
-%   Ver. 0.24   bugfixes: detection of default audio      13-Sep-2012   JW
+%   Ver. 0.01   initial creation of function                16-Jul-2012     JW
+%   Ver. 0.10   first working build                         16-Jul-2012     JW
+%   Ver. 0.20   basic functionality of playback             17-Jul-2012     JW
+%   Ver. 0.21   position mark in all plots                  19-Jul-2012     JW
+%   Ver. 0.22   improved behavior at wave's end             20-Jul-2012     JW
+%   Ver. 0.23   added support for channel routing matrix    27-Jul-2012     JW
+%   Ver. 0.24   bugfixes: detection of default audio        13-Sep-2012     JW
 %               output now working properly, routing 
 %               matrix now completely deactivateable
 %               live.
-%   Ver. 0.25   bugfixes: first axes now behaving as      15-Sep-2012   JW
+%   Ver. 0.25   bugfixes: first axes now behaving as        15-Sep-2012     JW
 %               as expected (on change of fig size).
-%   Ver. 0.26   added: menubar-item for window size       17-Sep-2012   JW
+%   Ver. 0.26   added: menubar-item for window size         17-Sep-2012     JW
 %               and NFFT. fixed: proper asynchronous
 %               updating of the GUI.
-%   Ver. 0.27   added: menubar item for colormap          18-Sep-2012   JW
+%   Ver. 0.27   added: menubar item for colormap            18-Sep-2012     JW
 %               (choice and change of depth)
-%   Ver. 0.28   bugfixes: activation of spectrogram       20-Sep-2012   JW
+%   Ver. 0.28   bugfixes: activation of spectrogram         20-Sep-2012     JW
 %               now works without resetting 
+%   Ver. 0.29   enhancement: player now supports the        09-Mar-2013     JW 
+%               'Parent' property and can therefore be
+%               placed inside of figures of uipanels
 
 
 %DEBUG
 %szFileName = 'TomShort.wav';
-close gcf
+% close gcf
 
+%% evaluation of input data
+if nargin == 0, help(mfilename); return; end;
 
 %% Macintosh notification
 if ismac
@@ -149,6 +171,8 @@ numOutputs      = [];
 iRedrawCounter  = 0;
 vColormapVal    = [];
 OrigColormapVal = [];
+caParentDef     = [];
+
 
 %% Create prelim. flags
 bPlaySelectionFlag  = 1;
@@ -170,15 +194,72 @@ hOverviewAxes   = [];
 hOverviewPos    = [];
 hWavePos        = [];
 hSpecPlots      = [];
-hSpectrograms    = [];
-hAxes           = axes;
+hSpectrograms   = [];
+
+caLeftoverParams = processInputParameters(varargin);
+
+%% Evaluation of behavioral settings
+    function cParameters = processInputParameters(cParameters)
+        valuesToDelete = [];
+        for kk=1:length(cParameters)
+            arg = cParameters{kk};
+            if ischar(arg) && strcmpi(arg,'Parent')
+                hParentFig = cParameters{kk + 1};
+                valuesToDelete = [valuesToDelete kk:kk+1];
+            end
+            if ischar(arg) && strcmpi(arg,'ShowXAxisAbove')
+                warnForOverride(arg)
+                valuesToDelete = [valuesToDelete kk:kk+1];
+            end
+            if ischar(arg) && strcmpi(arg,'PostZoomAction')
+                warnForOverride(arg)
+                valuesToDelete = [valuesToDelete kk:kk+1];
+            end
+%             if ischar(arg) && strcmpi(arg,'ColorsetFace')
+%                 warnForOverride(arg)
+%                 valuesToDelete = [valuesToDelete kk:kk+1];
+%             end
+%             if ischar(arg) && strcmpi(arg,'ColorsetEdge')
+%                 warnForOverride(arg)
+%                 valuesToDelete = [valuesToDelete kk:kk+1];
+%             end
+            if ischar(arg) && strcmpi(arg,'ChannelView')
+                warnForOverride(arg)
+                valuesToDelete = [valuesToDelete kk:kk+1];
+            end
+            if ischar(arg) && strcmpi(arg,'ZoomMode')
+                warnForOverride(arg)
+                valuesToDelete = [valuesToDelete kk:kk+1];
+            end
+        end
+        
+        cParameters(valuesToDelete) = [];
+        
+        function warnForOverride(szParamName)
+            warning('PWF:FeatureOverride', ...
+                ['''' szParamName ''' is not user-changeable due internal '...
+                'configuration of WaveformPlayer.'])
+        end
+    end
 
 
+if ~isempty(hParentFig)
+    caParentDef{1} = 'Axes';
+    caParentDef{2} = axes('Parent', hParentFig);
+    
+    hAxes = caParentDef{2};
+    
+else
+    
+    hAxes           = axes;
 
-%% Retrieve screensize and center position
-set(0,'Units','pixels');
-vScrSze = get(0,'screensize');
-guiSize = [vScrSze(3:4)/2-guiSize(1:2)/2 guiSize(1:2)];
+    
+    %% Retrieve screensize and center position
+    set(0,'Units','pixels');
+    vScrSze = get(0,'screensize');
+    guiSize = [vScrSze(3:4)/2-guiSize(1:2)/2 guiSize(1:2)];
+end
+
 
 
 if exist(szSaveFile,'file')
@@ -214,7 +295,10 @@ end
     'PostZoomAction', myPostZoomAction, ...
     'ColorsetFace',   myColorsetFace, ...
     'ColorsetEdge',   myColorsetEdge, ...
-    'ZoomMode', 2);
+    'ChannelView', 1, ...
+    'ZoomMode', 2, ...
+    caLeftoverParams, ...
+    caParentDef{:});
 
 vStartEndVal = [...
     vZoomPosition(1) vZoomPosition(1)+vZoomPosition(3) ...
@@ -370,13 +454,30 @@ CalculateSpectrogram();
 %% Initiation of interface and functionality
     function init
         
-        set(hFigure, ...
-            'Position', guiSize, ...
-            'Color', guiBackgroundColor)
+        if isempty(hParentFig)
+            set(hFigure, ...
+                'Position', guiSize, ...
+                'Color', guiBackgroundColor)
+            
+            set(hFigure,'toolbar','none')
+            set(hFigure,'menubar', 'none')
+            
+        else
+            try guiBackgroundColor = get(hFigure, ...
+                'Color');
+            catch
+                try guiBackgroundColor = get(hFigure, ...
+                'BackgroundColor');
+                catch error
+                    warning('WFP:GatherBGColor', ...
+                        ['Could not parse background: ' error.message]);
+                end
+            end
+        end
         
         %% Generate zoom slider
         % retrieve position of lowest axis
-        set(gca, 'units', 'normalized')
+        set(hAxes, 'units', 'normalized')
         vLastAxesPosition = get(hAxes, 'Position');
         
         % define the initial width of the zoom section
@@ -392,19 +493,21 @@ CalculateSpectrogram();
             vLastAxesPosition(3) ...
             0.04], ...
             'Callback', @CalcNewStartEndValHori, ...
-            'Enable', 'off');
-        set(gcf,'toolbar','none')   
-        set(gcf,'menubar', 'none')
+            'Enable', 'off', ...
+            'Parent', hFigure);
+        
+        
         
         %% Generate overview axes
-        hOverviewAxes = axes;
+        hOverviewAxes = axes('Parent', hFigure);
         
-        set(gca, 'units', 'normalized')
-        set(gca, 'Position', vOverviewAxesPos);
+        set(hOverviewAxes, 'units', 'normalized')
+        set(hOverviewAxes, 'Position', vOverviewAxesPos);
         for channel=1:numChannels
             hWaveView = fill([OrigTime_vek OrigTime_vek(end:-1:1)], ...
                 [OrigSampleValuesPos(:,channel); ...
-                flipud(OrigSampleValuesNeg(:,channel))],'b');
+                flipud(OrigSampleValuesNeg(:,channel))],'b', ...
+                'Parent', hOverviewAxes);
             set(hWaveView,'FaceAlpha',0.5, 'EdgeAlpha',0.6, ...
                 'FaceColor',myColorsetFace(mod ...
                 (channel-1, size(myColorsetFace,1))+1,:), ...
@@ -455,7 +558,8 @@ CalculateSpectrogram();
         vButtonSize = [0.1 0.6];
         
         %% Build the UI
-        set(hFigure, 'CloseRequestFcn', @Destructor)
+        try set(hFigure, 'CloseRequestFcn', @Destructor) %#ok
+        end
         
         handles.hPlayer = uipanel(...
             'Parent', hFigure, ...
@@ -617,7 +721,7 @@ CalculateSpectrogram();
             'Enable', 'on');
         
         %% Checkmarks for channel muting
-        for channel=1:numChannels      
+        for channel=1:numel(hWaveAxes)      
             hWaveAxesPos = get(hWaveAxes(channel), 'Position');
             
             ChanMuteXPos = hWaveAxesPos(1)+hWaveAxesPos(3)+0.005;
@@ -1369,8 +1473,8 @@ CalculateSpectrogram();
             set(hRect, 'EdgeColor', 'r')
         else
             set(hSliderHori,'Enable', 'off');
-            set(hRect, 'FaceColor', guiBackgroundColor)
-            set(hRect, 'EdgeColor', guiBackgroundColor)
+            set(hRect, 'FaceColor', 'w')
+            set(hRect, 'EdgeColor', 'w')
         end
         
         CalculateSpectrogram;
