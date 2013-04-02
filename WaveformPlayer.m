@@ -37,6 +37,21 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName, vararg
 %                       which the WFP is supposed to be placed if the function
 %                       is used in a multi-figure, or multi-panel environment
 %
+%   'ReturnStartEnd':   user defined function handle of a function present in
+%                       the mother function that will receive the start and end
+%                       values (in time [seconds]) after a zoom action was
+%                       performed. The function handle has to be defined first
+%                       For Example:
+%                       
+%                           funcPrintValues = @(StartEnd) ...
+%                                               disp(...
+%                                               sprintf(...
+%                                               'Start: %4.3f, End: %4.3f', ...
+%                                               StartEnd(1), StartEnd(2)));
+%
+%                           WaveformPlayer('ExampleWave', ...
+%                                           'ReturnStartEnd', funcPrintValues);
+%
 %
 %       NOTE: WaveformPlayer supports all the behavioral settings that
 %       PlotWaveform itself does, with except for the following. Those are used
@@ -172,6 +187,7 @@ iRedrawCounter  = 0;
 vColormapVal    = [];
 OrigColormapVal = [];
 caParentDef     = [];
+PostZoomReturnStartEnd    = [];
 
 
 %% Create prelim. flags
@@ -213,6 +229,10 @@ caLeftoverParams = processInputParameters(varargin);
             end
             if ischar(arg) && strcmpi(arg,'PostZoomAction')
                 warnForOverride(arg)
+                valuesToDelete = [valuesToDelete kk:kk+1];
+            end
+            if ischar(arg) && strcmpi(arg,'ReturnStartEnd')
+                PostZoomReturnStartEnd = cParameters{kk + 1};
                 valuesToDelete = [valuesToDelete kk:kk+1];
             end
 %             if ischar(arg) && strcmpi(arg,'ColorsetFace')
@@ -1459,7 +1479,9 @@ CalculateSpectrogram();
         
         vStartEndVal = ActualRectPosition;
 
-
+        if ~isempty(PostZoomReturnStartEnd)
+            PostZoomReturnStartEnd(vStartEndVal(1:2));
+        end
 
         
         iZoomWidth = vZoomPosition(3);
