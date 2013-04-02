@@ -76,7 +76,7 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName, vararg
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.22
+% VERSION 0.30
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -103,7 +103,9 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName, vararg
 %   Ver. 0.29   enhancement: player now supports the        09-Mar-2013     JW 
 %               'Parent' property and can therefore be
 %               placed inside of figures of uipanels
-
+%   Ver. 0.30   enhancement: player now supports returning  02-Apr-2013     JW
+%               the start/end interval of the current zoom
+%               position via the 'ReturnStartEnd' property
 
 %DEBUG
 %szFileName = 'TomShort.wav';
