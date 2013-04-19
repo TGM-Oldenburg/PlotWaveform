@@ -1,4 +1,4 @@
-function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName, varargin)
+function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szFileName, varargin)
 %PLOTWAVEFORMPLAYER    waveform plot with player functionality
 %   PlotWaveform plots the waveform of a WAVE-file, or vector of WAVE-data
 %   using a block by block mean calculation algorithm. WAVE-data first gets
@@ -74,9 +74,20 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName, vararg
 %   hOverviewAxes:      handle to use in superior function or script to
 %                       modify the parameters of the overview plot
 %
+%   stFuncHandles:      struct containing internal function handles of the
+%                       WFP to use in superior function or script to modify
+%                       parameters.
+%
+%      * stFuncHandles.NewZoomPosition(vZoomPosition):     
+%                       function handle to deliver a new zoom position to WFP.
+%                       vZoomPosition has to be a 2x1 vector for the X position
+%                       {and a 4x1 for X and Y position} to be forwarded:
+%
+%                           vZoomPosition = [X1, X2, {Y1, Y2}];
+%
 
 %--------------------------------------------------------------------------
-% VERSION 0.30
+% VERSION 0.31
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -106,6 +117,10 @@ function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName, vararg
 %   Ver. 0.30   enhancement: player now supports returning  02-Apr-2013     JW
 %               the start/end interval of the current zoom
 %               position via the 'ReturnStartEnd' property
+%   Ver. 0.31   enhancement: player now supports receiving  19-Apr-2013     JW
+%               the start/end interval for the zoom 
+%               position via the 
+%               stFuncHandles.PostZoomAction func. handle
 
 %DEBUG
 %szFileName = 'TomShort.wav';
@@ -213,6 +228,7 @@ hOverviewPos    = [];
 hWavePos        = [];
 hSpecPlots      = [];
 hSpectrograms   = [];
+hParentFig      = [];
 
 caLeftoverParams = processInputParameters(varargin);
 
@@ -265,8 +281,9 @@ caLeftoverParams = processInputParameters(varargin);
     end
 
 
+caParentDef{1} = 'Axes';
+
 if ~isempty(hParentFig)
-    caParentDef{1} = 'Axes';
     caParentDef{2} = axes('Parent', hParentFig);
     
     hAxes = caParentDef{2};
@@ -274,8 +291,8 @@ if ~isempty(hParentFig)
 else
     
     hAxes           = axes;
+    caParentDef{2} = hAxes;
 
-    
     %% Retrieve screensize and center position
     set(0,'Units','pixels');
     vScrSze = get(0,'screensize');
@@ -293,7 +310,10 @@ set(hAxes, ...
     'units', 'normalized', ...
     'Position', vUpperAxesPos)
 
+
 myPostZoomAction = @myPostActionCallback;
+
+stFuncHandles.NewZoomPosition = myPostZoomAction;
 
 if ispc
     guiFontSize        = 8;           % in pixels (default, Win)
@@ -1470,16 +1490,50 @@ CalculateSpectrogram();
 
 %% Function to initiate the callback after an action
     function myPostActionCallback(ActualRectPosition, ~)
-        
-        vZoomPosition =  [...
-            ActualRectPosition(1) ...
-            ActualRectPosition(3) ...
-            ActualRectPosition(2)-ActualRectPosition(1) ...
-            ActualRectPosition(4)-ActualRectPosition(3)];
+    
+    
+    if ActualRectPosition(1) >= OrigStartEndVal(1)
+        warning('WFP:OutOfBounds', ...
+            'ActualRectPosition(1) is out of bounds. Will be fitted');
+        ActualRectPosition(1) = OrigStartEndVal(2)-0.001;
+    end
+    if ActualRectPosition(2) > OrigStartEndVal(2)
+        warning('WFP:OutOfBounds', ...
+            'ActualRectPosition(2) is out of bounds. Will be fitted');
+        ActualRectPosition(2) = OrigStartEndVal(2);
+    end
+    
+    
+    switch length(ActualRectPosition)
+        case 2
+    
+            vZoomPosition(1) = ActualRectPosition(1);
+            vZoomPosition(3) = ActualRectPosition(2)-ActualRectPosition(1);
+            
+            vStartEndVal(1:2) = ActualRectPosition(1:2);
+
+            
+        case 4
+            
+            vZoomPosition =  [...
+                ActualRectPosition(1) ...
+                ActualRectPosition(3) ...
+                ActualRectPosition(2)-ActualRectPosition(1) ...
+                ActualRectPosition(4)-ActualRectPosition(3)];
+            
+            vStartEndVal = ActualRectPosition;
+            
+        otherwise
+            error('ActualRectPosition has to be 2 or 4 element vector')
+    end
+    
+    
+    
+    
+    
         set(hRect, 'Position', vZoomPosition);
         axis(hOverviewAxes,OrigStartEndVal);
         
-        vStartEndVal = ActualRectPosition;
 
         if ~isempty(PostZoomReturnStartEnd)
             PostZoomReturnStartEnd(vStartEndVal(1:2));
