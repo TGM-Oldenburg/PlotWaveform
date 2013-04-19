@@ -74,9 +74,20 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %   hOverviewAxes:      handle to use in superior function or script to
 %                       modify the parameters of the overview plot
 %
+%   stFuncHandles:      struct containing internal function handles of the
+%                       WFP to use in superior function or script to modify
+%                       parameters.
+%
+%      * stFuncHandles.NewZoomPosition(vZoomPosition):     
+%                       function handle to deliver a new zoom position to WFP.
+%                       vZoomPosition has to be a 2x1 vector for the X position
+%                       {and a 4x1 for X and Y position} to be forwarded:
+%
+%                           vZoomPosition = [X1, X2, {Y1, Y2}];
+%
 
 %--------------------------------------------------------------------------
-% VERSION 0.30
+% VERSION 0.31
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -106,6 +117,10 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %   Ver. 0.30   enhancement: player now supports returning  02-Apr-2013     JW
 %               the start/end interval of the current zoom
 %               position via the 'ReturnStartEnd' property
+%   Ver. 0.31   enhancement: player now supports receiving  19-Apr-2013     JW
+%               the start/end interval for the zoom 
+%               position via the 
+%               stFuncHandles.PostZoomAction func. handle
 
 %DEBUG
 %szFileName = 'TomShort.wav';
