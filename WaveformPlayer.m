@@ -1,4 +1,4 @@
-function [hFigure, hWaveAxes, hOverviewAxes] = WaveformPlayer(szFileName, varargin)
+function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szFileName, varargin)
 %PLOTWAVEFORMPLAYER    waveform plot with player functionality
 %   PlotWaveform plots the waveform of a WAVE-file, or vector of WAVE-data
 %   using a block by block mean calculation algorithm. WAVE-data first gets
@@ -295,7 +295,10 @@ set(hAxes, ...
     'units', 'normalized', ...
     'Position', vUpperAxesPos)
 
+
 myPostZoomAction = @myPostActionCallback;
+
+stFuncHandles.NewZoomPosition = myPostZoomAction;
 
 if ispc
     guiFontSize        = 8;           % in pixels (default, Win)
