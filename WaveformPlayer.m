@@ -284,14 +284,11 @@ caLeftoverParams = processInputParameters(varargin);
 caParentDef{1} = 'Axes';
 
 if ~isempty(hParentFig)
-    caParentDef{2} = axes('Parent', hParentFig);
-    
-    hAxes = caParentDef{2};
+    hAxes = axes('Parent', hParentFig);
     
 else
-    
-    hAxes           = axes;
-    caParentDef{2} = hAxes;
+    hParentFig      = figure;
+    hAxes           = axes('Parent', hParentFig);
 
     %% Retrieve screensize and center position
     set(0,'Units','pixels');
@@ -299,7 +296,7 @@ else
     guiSize = [vScrSze(3:4)/2-guiSize(1:2)/2 guiSize(1:2)];
 end
 
-
+caParentDef{2} = hAxes;
 
 if exist(szSaveFile,'file')
     load(szSaveFile, '-mat')
@@ -497,6 +494,9 @@ CalculateSpectrogram();
     function init
         
         if isempty(hParentFig)
+            
+%             hFigure = figure;
+%             hParentFig = hFigure;
             set(hFigure, ...
                 'Position', guiSize, ...
                 'Color', guiBackgroundColor)
@@ -1491,8 +1491,11 @@ CalculateSpectrogram();
 %% Function to initiate the callback after an action
     function myPostActionCallback(ActualRectPosition, ~)
     
+    if max(ActualRectPosition < 0) == 1
+        error('Scalars in ActualRectPosition have to be >= 0')
+    end
     
-    if ActualRectPosition(1) >= OrigStartEndVal(1)
+    if ActualRectPosition(1) >= OrigStartEndVal(2)
         warning('WFP:OutOfBounds', ...
             'ActualRectPosition(1) is out of bounds. Will be fitted');
         ActualRectPosition(1) = OrigStartEndVal(2)-0.001;
