@@ -1475,16 +1475,50 @@ CalculateSpectrogram();
 
 %% Function to initiate the callback after an action
     function myPostActionCallback(ActualRectPosition, ~)
-        
-        vZoomPosition =  [...
-            ActualRectPosition(1) ...
-            ActualRectPosition(3) ...
-            ActualRectPosition(2)-ActualRectPosition(1) ...
-            ActualRectPosition(4)-ActualRectPosition(3)];
+    
+    
+    if ActualRectPosition(1) >= OrigStartEndVal(1)
+        warning('WFP:OutOfBounds', ...
+            'ActualRectPosition(1) is out of bounds. Will be fitted');
+        ActualRectPosition(1) = OrigStartEndVal(2)-0.001;
+    end
+    if ActualRectPosition(2) > OrigStartEndVal(2)
+        warning('WFP:OutOfBounds', ...
+            'ActualRectPosition(2) is out of bounds. Will be fitted');
+        ActualRectPosition(2) = OrigStartEndVal(2);
+    end
+    
+    
+    switch length(ActualRectPosition)
+        case 2
+    
+            vZoomPosition(1) = ActualRectPosition(1);
+            vZoomPosition(3) = ActualRectPosition(2)-ActualRectPosition(1);
+            
+            vStartEndVal(1:2) = ActualRectPosition(1:2);
+
+            
+        case 4
+            
+            vZoomPosition =  [...
+                ActualRectPosition(1) ...
+                ActualRectPosition(3) ...
+                ActualRectPosition(2)-ActualRectPosition(1) ...
+                ActualRectPosition(4)-ActualRectPosition(3)];
+            
+            vStartEndVal = ActualRectPosition;
+            
+        otherwise
+            error('ActualRectPosition has to be 2 or 4 element vector')
+    end
+    
+    
+    
+    
+    
         set(hRect, 'Position', vZoomPosition);
         axis(hOverviewAxes,OrigStartEndVal);
         
-        vStartEndVal = ActualRectPosition;
 
         if ~isempty(PostZoomReturnStartEnd)
             PostZoomReturnStartEnd(vStartEndVal(1:2));
