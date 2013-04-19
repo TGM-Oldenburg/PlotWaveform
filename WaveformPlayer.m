@@ -213,6 +213,7 @@ hOverviewPos    = [];
 hWavePos        = [];
 hSpecPlots      = [];
 hSpectrograms   = [];
+hParentFig      = [];
 
 caLeftoverParams = processInputParameters(varargin);
 
@@ -265,8 +266,9 @@ caLeftoverParams = processInputParameters(varargin);
     end
 
 
+caParentDef{1} = 'Axes';
+
 if ~isempty(hParentFig)
-    caParentDef{1} = 'Axes';
     caParentDef{2} = axes('Parent', hParentFig);
     
     hAxes = caParentDef{2};
@@ -274,8 +276,8 @@ if ~isempty(hParentFig)
 else
     
     hAxes           = axes;
+    caParentDef{2} = hAxes;
 
-    
     %% Retrieve screensize and center position
     set(0,'Units','pixels');
     vScrSze = get(0,'screensize');
