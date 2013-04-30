@@ -1491,10 +1491,6 @@ CalculateSpectrogram();
 %% Function to initiate the callback after an action
     function myPostActionCallback(ActualRectPosition, ~)
     
-    if max(ActualRectPosition < 0) == 1
-        error('Scalars in ActualRectPosition have to be >= 0')
-    end
-    
     if ActualRectPosition(1) >= OrigStartEndVal(2)
         warning('WFP:OutOfBounds', ...
             'ActualRectPosition(1) is out of bounds. Will be fitted');
