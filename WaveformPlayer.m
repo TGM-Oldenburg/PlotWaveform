@@ -208,7 +208,6 @@ iRedrawCounter  = 0;
 vColormapVal    = [];
 OrigColormapVal = [];
 caParentDef     = [];
-PostZoomReturnStartEnd    = [];
 
 
 %% Create prelim. flags
@@ -233,6 +232,8 @@ hWavePos        = [];
 hSpecPlots      = [];
 hSpectrograms   = [];
 hParentFig      = [];
+myPostZoomReturnStartEnd    = [];
+myPostSlideAction           = [];
 
 caLeftoverParams = processInputParameters(varargin);
 
@@ -253,8 +254,12 @@ caLeftoverParams = processInputParameters(varargin);
                 warnForOverride(arg)
                 valuesToDelete = [valuesToDelete kk:kk+1];
             end
+            if ischar(arg) && strcmpi(arg,'PostSlideAction')
+                myPostSlideAction = cParameters{kk + 1};
+                valuesToDelete = [valuesToDelete kk:kk+1];
+            end
             if ischar(arg) && strcmpi(arg,'ReturnStartEnd')
-                PostZoomReturnStartEnd = cParameters{kk + 1};
+                myPostZoomReturnStartEnd = cParameters{kk + 1};
                 valuesToDelete = [valuesToDelete kk:kk+1];
             end
 %             if ischar(arg) && strcmpi(arg,'ColorsetFace')
@@ -1541,8 +1546,8 @@ CalculateSpectrogram();
         axis(hOverviewAxes,OrigStartEndVal);
         
 
-        if ~isempty(PostZoomReturnStartEnd)
-            PostZoomReturnStartEnd(vStartEndVal(1:2));
+        if ~isempty(myPostZoomReturnStartEnd)
+            myPostZoomReturnStartEnd(vStartEndVal(1:2));
         end
 
         
@@ -1600,6 +1605,11 @@ CalculateSpectrogram();
         vStartEndVal = StartEndVal;
         
         CalculateSpectrogram();
+        
+        if ~isempty(myPostSlideAction)
+           myPostSlideAction(vStartEndVal); 
+        end
+        
     end
 
 %% Destructor function
