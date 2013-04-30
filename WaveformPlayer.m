@@ -52,6 +52,12 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %                           WaveformPlayer('ExampleWave', ...
 %                                           'ReturnStartEnd', funcPrintValues);
 %
+%   'PostSlideAction':  user defined function handle of a function present in
+%                       the mother function that will receive the start and end
+%                       values (in time [seconds]) after a sliding action was
+%                       performed. The function handle has to be defined first
+%                       Example see 'ReturnStartEnd' above.
+%
 %
 %       NOTE: WaveformPlayer supports all the behavioral settings that
 %       PlotWaveform itself does, with except for the following. Those are used
@@ -87,7 +93,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.32
+% VERSION 0.33
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -125,6 +131,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %   Ver. 0.31.2 Removal of false error in input verifi.     30-Apr-2013     JW
 %   Ver. 0.32   Newly created Ini-file will now be placed   30-Apr-2013     JW
 %               in the directory of WaveformPlayer.m
+%   Ver. 0.33   New function handle input for post slide    30-Apr-2013     JW
 
 %DEBUG
 %szFileName = 'TomShort.wav';
