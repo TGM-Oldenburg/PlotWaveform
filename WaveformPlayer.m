@@ -1390,7 +1390,6 @@ CalculateSpectrogram();
     end
 
 %% Routing and Muting Process
-
     function ProcessingBlock = RoutingAndMuting(ProcessingBlock)
         
         %% Muting by the set checks
@@ -1562,6 +1561,7 @@ CalculateSpectrogram();
             set(hRect, 'EdgeColor', 'w')
         end
         
+        ReadAndComputeMaxData(1, vStartEndVal);
         CalculateSpectrogram;
         
         
