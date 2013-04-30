@@ -175,7 +175,7 @@ guiSize             = [ 800 600];
 auxSize             = [ 400 300];
 
 %% Set global settings
-szSaveFile      = 'WaveformPlayer.ini';
+szSaveFileTitle = 'WaveformPlayer.ini';
 iBlockLen       = 1024*4;
 iWinMin         = 256;
 iWinDef         = 2048;
@@ -299,6 +299,10 @@ else
 end
 
 caParentDef{2} = hAxes;
+
+caFuncPath = which('WaveformPlayer.m', '-all');
+szFuncPath = fileparts(caFuncPath{1});
+szSaveFile   = [szFuncPath   filesep     szSaveFileTitle];
 
 if exist(szSaveFile,'file')
     load(szSaveFile, '-mat')
