@@ -87,7 +87,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.31.2
+% VERSION 0.32
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -123,6 +123,8 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %               stFuncHandles.PostZoomAction func. handle
 %   Ver. 0.31.1 Multifig fix on input verification          19-Apr-2013     JW
 %   Ver. 0.31.2 Removal of false error in input verifi.     30-Apr-2013     JW
+%   Ver. 0.32   Newly created Ini-file will now be placed   30-Apr-2013     JW
+%               in the directory of WaveformPlayer.m
 
 %DEBUG
 %szFileName = 'TomShort.wav';
@@ -175,7 +177,7 @@ guiSize             = [ 800 600];
 auxSize             = [ 400 300];
 
 %% Set global settings
-szSaveFile      = 'WaveformPlayer.ini';
+szSaveFileTitle = 'WaveformPlayer.ini';
 iBlockLen       = 1024*4;
 iWinMin         = 256;
 iWinDef         = 2048;
@@ -299,6 +301,10 @@ else
 end
 
 caParentDef{2} = hAxes;
+
+caFuncPath = which('WaveformPlayer.m', '-all');
+szFuncPath = fileparts(caFuncPath{1});
+szSaveFile   = [szFuncPath   filesep     szSaveFileTitle];
 
 if exist(szSaveFile,'file')
     load(szSaveFile, '-mat')
