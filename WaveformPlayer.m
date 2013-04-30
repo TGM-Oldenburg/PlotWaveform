@@ -87,7 +87,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.31
+% VERSION 0.31.2
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -121,6 +121,8 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %               the start/end interval for the zoom 
 %               position via the 
 %               stFuncHandles.PostZoomAction func. handle
+%   Ver. 0.31.1 Multifig fix on input verification          19-Apr-2013     JW
+%   Ver. 0.31.2 Removal of false error in input verifi.     30-Apr-2013     JW
 
 %DEBUG
 %szFileName = 'TomShort.wav';
@@ -1490,10 +1492,6 @@ CalculateSpectrogram();
 
 %% Function to initiate the callback after an action
     function myPostActionCallback(ActualRectPosition, ~)
-    
-    if max(ActualRectPosition < 0) == 1
-        error('Scalars in ActualRectPosition have to be >= 0')
-    end
     
     if ActualRectPosition(1) >= OrigStartEndVal(2)
         warning('WFP:OutOfBounds', ...
