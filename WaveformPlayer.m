@@ -93,7 +93,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.33
+% VERSION 0.34
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -132,6 +132,13 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %   Ver. 0.32   Newly created Ini-file will now be placed   30-Apr-2013     JW
 %               in the directory of WaveformPlayer.m
 %   Ver. 0.33   New function handle input for post slide    30-Apr-2013     JW
+%   Ver. 0.34   Change: Checkboxes for spectrogram and      03-May-2013     JW
+%               waveform have been exchanged for a toggle
+%               switch. This works better than an overlayed
+%               display of both.
+%               Fix: Colormap depth works again and slider
+%               input is now even better verified in the
+%               zoom post action callback.
 
 %DEBUG
 %szFileName = 'TomShort.wav';
