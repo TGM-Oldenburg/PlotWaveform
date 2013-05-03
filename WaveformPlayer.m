@@ -93,7 +93,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.33
+% VERSION 0.34
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -132,6 +132,13 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %   Ver. 0.32   Newly created Ini-file will now be placed   30-Apr-2013     JW
 %               in the directory of WaveformPlayer.m
 %   Ver. 0.33   New function handle input for post slide    30-Apr-2013     JW
+%   Ver. 0.34   Change: Checkboxes for spectrogram and      03-May-2013     JW
+%               waveform have been exchanged for a toggle
+%               switch. This works better than an overlayed
+%               display of both.
+%               Fix: Colormap depth works again and slider
+%               input is now even better verified in the
+%               zoom post action callback.
 
 %DEBUG
 %szFileName = 'TomShort.wav';
@@ -216,17 +223,15 @@ vColormapVal    = [];
 OrigColormapVal = [];
 caParentDef     = [];
 
-
 %% Create prelim. flags
 bPlaySelectionFlag  = 1;
 bPlayAsLoopFlag     = 0;
 bIsPlayingFlag      = 0;
 bIsEndOfWaveFlag    = 0;
 bIsPausedFlag       = 0;
-bShowAsWaveform     = 1;
-bShowAsSpectrogram  = 0;
 bCalcSpectogram     = 1;
 bRoutingEnabled     = 1;
+bWaveDisplayType    = 1;
 
 %% Create empty handles
 handles         = [];
@@ -236,7 +241,7 @@ hSliderHori     = [];
 hOverviewAxes   = [];
 hOverviewPos    = [];
 hWavePos        = [];
-hSpecPlots      = [];
+hDataToggle     = [];
 hSpectrograms   = [];
 hParentFig      = [];
 myPostZoomReturnStartEnd    = [];
@@ -251,39 +256,39 @@ caLeftoverParams = processInputParameters(varargin);
             arg = cParameters{kk};
             if ischar(arg) && strcmpi(arg,'Parent')
                 hParentFig = cParameters{kk + 1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ShowXAxisAbove')
                 warnForOverride(arg)
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'PostZoomAction')
                 warnForOverride(arg)
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'PostSlideAction')
                 myPostSlideAction = cParameters{kk + 1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ReturnStartEnd')
                 myPostZoomReturnStartEnd = cParameters{kk + 1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
 %             if ischar(arg) && strcmpi(arg,'ColorsetFace')
 %                 warnForOverride(arg)
-%                 valuesToDelete = [valuesToDelete kk:kk+1];
+%                 valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
 %             end
 %             if ischar(arg) && strcmpi(arg,'ColorsetEdge')
 %                 warnForOverride(arg)
-%                 valuesToDelete = [valuesToDelete kk:kk+1];
+%                 valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
 %             end
             if ischar(arg) && strcmpi(arg,'ChannelView')
                 warnForOverride(arg)
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ZoomMode')
                 warnForOverride(arg)
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
         end
         
@@ -335,7 +340,7 @@ stFuncHandles.NewZoomPosition = myPostZoomAction;
 if ispc
     guiFontSize        = 8;           % in pixels (default, Win)
 else
-    guiFontSize        = 12;           % in pixels (default, Unix)
+    guiFontSize        = 10;           % in pixels (default, Unix)
 end
 
 %% Call the goddess of all-mighty PlotWaveform
@@ -369,9 +374,6 @@ bMuteChannels = zeros(1, numChannels);
 
 init();
 
-
-CalculateSpectrogram();
-
 % PlotWaveform/SetOriginalZoom;
 
 %--------------------------------------------------------------------------
@@ -388,12 +390,11 @@ CalculateSpectrogram();
 
 %% Function to calculate the spectrogram overlay
     function CalculateSpectrogram
-        
+    
         GetAxesSize();
         
         for xx=1:length(hWaveAxes)
             
-            hold(hWaveAxes(xx), 'on')
             
             if bCalcSpectogram
                 OrigSpectrData = 20*log10(abs(...
@@ -428,17 +429,6 @@ CalculateSpectrogram();
                 'Tag', 'spectrs', ...
                 'Visible', 'on');
 
-            
-            bShowAsSpectrogram = get (handles.hCheckSpectrogram, 'Value');
-            
-            switch bShowAsSpectrogram
-                case 1
-                    set(hSpectrograms(xx), 'Visible', 'on');
-                    axis(hWaveAxes(xx) ,'xy', 'tight');
-                case 0
-                    set(hSpectrograms(xx), 'Visible', 'off');
-            end
-            
             szEval = ['colormap(hWaveAxes(' num2str(xx) '),' guiColormapDef ');'];
             
             eval(szEval);
@@ -494,14 +484,15 @@ CalculateSpectrogram();
 %         end
 
 
-        if bShowAsSpectrogram
+        if bWaveDisplayType == 2
 
             if isempty(OrigColormapVal)
                 OrigColormapVal =  get(hWaveAxes(1), 'CLim');
                 vColormapVal = OrigColormapVal;
             end
 
-
+            vColormapVal = sort(vColormapVal);
+            
             for xx=1:numel(hSpectrograms)
                 set(hWaveAxes(xx), 'CLim', vColormapVal);
             end
@@ -527,7 +518,7 @@ CalculateSpectrogram();
         else
             try guiBackgroundColor = get(hFigure, ...
                 'Color');
-            catch
+            catch %#ok
                 try guiBackgroundColor = get(hFigure, ...
                 'BackgroundColor');
                 catch error
@@ -557,8 +548,6 @@ CalculateSpectrogram();
             'Callback', @CalcNewStartEndValHori, ...
             'Enable', 'off', ...
             'Parent', hFigure);
-        
-        
         
         %% Generate overview axes
         hOverviewAxes = axes('Parent', hFigure);
@@ -728,7 +717,7 @@ CalculateSpectrogram();
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
             'Position', [0.05+(0.02+vButtonSize(1))*5 ...
-            0.54 0.15 0.27], ...
+            0.54 0.12 0.27], ...
             'BackgroundColor', guiBackgroundColor-0, ...
             'String', szSelectionStart, ...
             'FontSize', guiFontSize, ...
@@ -739,7 +728,7 @@ CalculateSpectrogram();
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
             'Position', [0.05+(0.02+vButtonSize(1))*5 ...
-            0.1 0.15 0.27], ...
+            0.095 0.12 0.27], ...
             'BackgroundColor', guiBackgroundColor-0, ...
             'String', szSelectionEnd, ...
             'FontSize', guiFontSize, ...
@@ -750,37 +739,43 @@ CalculateSpectrogram();
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
             'Position', [0.05+(0.02+vButtonSize(1))*5 ...
-            0.39 0.14 0.20], ...
+            0.39 0.12 0.20], ...
             'BackgroundColor', guiBackgroundColor-0, ...
             'String', szCurrentPos, ...
             'FontSize', guiFontSize, ...
             'HorizontalAlign', 'left');
         
-        %% Checkmarks for Waveform and Spectrogram
-        handles.hCheckWaveform = uicontrol(...
-            'Style', 'checkbox', ...
-            'Parent', handles.hPlayer, ...
-            'Units', 'normalized', ...
-            'Position', [0.06+(0.02+vButtonSize(1))*6 ...
-            0.55 0.2 0.3], ...
-            'BackgroundColor', guiBackgroundColor-0, ...
-            'String', 'Waveform', ...
-            'FontSize', guiFontSize, ...
-            'Value', bShowAsWaveform, ...
-            'Callback', @SwitchShowWaveform);
         
-        handles.hCheckSpectrogram = uicontrol(...
-            'Style', 'checkbox', ...
+        hDataToggle = uibuttongroup( ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
-            'Position', [0.06+(0.02+vButtonSize(1))*6 ...
-            0.15 0.2 0.3], ...
-            'BackgroundColor', guiBackgroundColor, ...
-            'String', 'Spectrogram', ...
+            'Position', [0.06+(0.02+vButtonSize(1))*6 0.1 0.2 0.8], ...
+            'BackgroundColor', guiBackgroundColor-0, ...
             'FontSize', guiFontSize, ...
-            'Value', bShowAsSpectrogram, ...
-            'Callback', @SwitchShowSpectrogram, ...
-            'Enable', 'on');
+            'SelectionChangeFcn', @SwitchWaveDisplay);        
+        
+        
+%         %% Checkmarks for Waveform and Spectrogram
+        uicontrol(...
+            'Style', 'radio', ...
+            'Parent', hDataToggle, ...
+            'Units', 'normalized', ...
+            'Position', [0.05 0.55 0.9 0.4], ...
+            'HandleVisibility', 'off', ...
+            'String', 'Waveform', ...
+            'Tag', '1');
+        
+        uicontrol(...
+            'Style', 'radio', ...
+            'Parent', hDataToggle, ...
+            'Units', 'normalized', ...
+            'Position', [0.05 0.05 0.9 0.4], ...
+            'HandleVisibility', 'off', ...
+            'String', 'Spectrogram', ...
+            'Tag', '2');
+%         
+%         set(hDataToggle, ...
+%             'SelectedObject', hWaveform)
         
         %% Checkmarks for channel muting
         for channel=1:numel(hWaveAxes)      
@@ -1057,7 +1052,9 @@ CalculateSpectrogram();
         
         %% - - Callback on user modifying color map
         function modifyColormap(~,~,~)
-           
+        
+        if ~isempty(OrigColormapVal)
+            
             FigureHeight = 100;
             
             SliderVal(1) = OrigColormapVal(1)*(-1)+OrigColormapVal(1);
@@ -1115,14 +1112,14 @@ CalculateSpectrogram();
                 'Position', [0.02 0.5 0.15 0.3], ...
                 'BackgroundColor', guiBackgroundColor-0, ...
                 'HorizontalAlign', 'left');
-                
+            
             uicontrol('Style', 'text', ...
                 'Parent', hPanel, ...
                 'String', 'Highest', ...
                 'units', 'normalized', ...
                 'Position', [0.02 0.05 0.15 0.3], ...
                 'BackgroundColor', guiBackgroundColor-0, ...
-                'HorizontalAlign', 'left'); 
+                'HorizontalAlign', 'left');
             
             %% Show the current slider/depth values
             handles.hValueColormapDepth(1) = uicontrol('Style', 'text', ...
@@ -1132,15 +1129,15 @@ CalculateSpectrogram();
                 'Position', [0.91 0.5 0.08 0.3], ...
                 'BackgroundColor', guiBackgroundColor-0, ...
                 'HorizontalAlign', 'left');
-                
+            
             handles.hValueColormapDepth(2) = uicontrol('Style', 'text', ...
                 'Parent', hPanel, ...
                 'String', sprintf('%3.1f',SliderVal(2)), ...
                 'units', 'normalized', ...
                 'Position', [0.91 0.05 0.08 0.3], ...
                 'BackgroundColor', guiBackgroundColor-0, ...
-                'HorizontalAlign', 'left'); 
-            
+                'HorizontalAlign', 'left');
+        end
         end
         
         % Callback to callback: Process new depth values
@@ -1172,125 +1169,29 @@ CalculateSpectrogram();
     end
 
 
-
-%% Switching function for the waveform display
-    function SwitchShowWaveform(object,~)
+    function SwitchWaveDisplay(~, event)
+        fprintf('Toggled!\n')
         
-        bShowAsWaveform = get(object, 'Value');
         
-        hWavePlots = findobj('Tag', 'pwf_plots');
+        iCurState = str2double(get(event.NewValue, 'Tag'));
         
-        switch bShowAsWaveform
-            case 0
-                for hh=1:length(hWavePlots)
-                    set(hWavePlots(hh), 'Visible', 'off')
-                end
+        
+        switch iCurState
+            case 1
+                bWaveDisplayType = 1;
+                ReadAndComputeMaxData();
                 
-            case 1
-                for hh=1:length(hWavePlots)
-                    set(hWavePlots(hh), 'Visible', 'on')
-                end
+            case 2
+                bWaveDisplayType = 2;
+                CalculateSpectrogram();
+
+                
+            otherwise
+                error('Internal error. Exiting.')
         end
-        
     end
 
-%% Switching function for the spectrum display
-    function SwitchShowSpectrogram(object,~)
-        
-        CalculateSpectrogram();
-        
-        bShowAsSpectrogram = get(object, 'Value');
-        
-        hSpecPlots = findobj('Tag', 'spectrs');
-        
-        switch bShowAsSpectrogram
-            case 0
-                    for hh=1:length(hSpecPlots)
-                        set(hSpecPlots(hh), 'Visible', 'off')
-                    end
 
-            case 1
-                    
-                    for hh=1:length(hSpecPlots)
-                        set(hSpecPlots(hh), 'Visible', 'on')
-                    end                   
-
-        end
-        
-    end
-
-%% Callback on user hit: play
-    function CallbackPlay(~,~)
-        
-        bPlaySelectionFlag  = get(handles.hCheckSelection,  'Value');
-        bPlayAsLoopFlag     = get(handles.hCheckLoop,       'Value');
-
-        if bPlaySelectionFlag
-            
-            
-            FrmBeg  = floor(vZoomPosition(1)*fs);
-            FrmEnd  = floor((vZoomPosition(1)+vZoomPosition(3))*fs);
-            
-            if FrmEnd-FrmBeg < iBlockLen
-                mPlaybackData = zeros(iBlockLen, numChannels);
-                mPlaybackData(1:FrmEnd-FrmBeg,:) = ...
-                    wavData(FrmBeg:FrmEnd,:);
-            end
-            
-            mPlaybackData = wavData(FrmBeg:FrmEnd,:);
-            
-        else
-            mPlaybackData = wavData;
-        end
-        
-        
-       
-        
-        bIsPlayingFlag = 1;
-        bIsPausedFlag  = 0;
-        
-       set(handles.hPBPlay, 'Enable', 'off')
-       set(handles.hPBPause,'Enable', 'on')
-       set(handles.hPBStop, 'Enable', 'on')
-
-       
-       CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
-       szCurrentPos = sprintf('%8.3f',CurrentPos);
-       
-       set(handles.hValueCurrentPos, ...
-           'String', szCurrentPos)
-              
-       if ishandle(hOverviewPos)
-           delete(hOverviewPos)
-       end
-       
-       if ishandle(hWavePos)
-           delete(hWavePos)
-       end
-       
-       
-       hOverviewPos = line([CurrentPos CurrentPos],[-1.5 1.5], ...
-           'Parent', hOverviewAxes, ...
-           'Color', [000/255 000/255 000/255], ...
-           'XData', [CurrentPos CurrentPos], ...
-           'LineWidth', 1.5);
-       
-       hWavePos = zeros(1, length(hWaveAxes));
-       
-       for nn=1:numel(hWaveAxes)
-       
-           hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 1.5], ...
-           'Parent', hWaveAxes(nn), ...
-           'Color', [000/255 000/255 000/255], ...
-           'XData', [CurrentPos CurrentPos], ...
-           'LineWidth', 1.5);
-       
-       
-       end
-       
-       whilePlaying();
-       
-    end
 
 %% Function called while playing is activated
     function whilePlaying()
@@ -1435,6 +1336,79 @@ CalculateSpectrogram();
         
     end
 
+%% Callback on user hit: play
+    function CallbackPlay(~,~)
+        
+        bPlaySelectionFlag  = get(handles.hCheckSelection,  'Value');
+        bPlayAsLoopFlag     = get(handles.hCheckLoop,       'Value');
+
+        if bPlaySelectionFlag
+            
+            
+            FrmBeg  = floor(vZoomPosition(1)*fs);
+            FrmEnd  = floor((vZoomPosition(1)+vZoomPosition(3))*fs);
+            
+            if FrmEnd-FrmBeg < iBlockLen
+                mPlaybackData = zeros(iBlockLen, numChannels);
+                mPlaybackData(1:FrmEnd-FrmBeg,:) = ...
+                    wavData(FrmBeg:FrmEnd,:);
+            end
+            
+            mPlaybackData = wavData(FrmBeg:FrmEnd,:);
+            
+        else
+            mPlaybackData = wavData;
+        end
+        
+        
+       
+        
+        bIsPlayingFlag = 1;
+        bIsPausedFlag  = 0;
+        
+       set(handles.hPBPlay, 'Enable', 'off')
+       set(handles.hPBPause,'Enable', 'on')
+       set(handles.hPBStop, 'Enable', 'on')
+
+       
+       CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+       szCurrentPos = sprintf('%8.3f',CurrentPos);
+       
+       set(handles.hValueCurrentPos, ...
+           'String', szCurrentPos)
+              
+       if ishandle(hOverviewPos)
+           delete(hOverviewPos)
+       end
+       
+       if ishandle(hWavePos)
+           delete(hWavePos)
+       end
+       
+       
+       hOverviewPos = line([CurrentPos CurrentPos],[-1.5 1.5], ...
+           'Parent', hOverviewAxes, ...
+           'Color', [000/255 000/255 000/255], ...
+           'XData', [CurrentPos CurrentPos], ...
+           'LineWidth', 1.5);
+       
+       hWavePos = zeros(1, length(hWaveAxes));
+       
+       for nn=1:numel(hWaveAxes)
+       
+           hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 1.5], ...
+           'Parent', hWaveAxes(nn), ...
+           'Color', [000/255 000/255 000/255], ...
+           'XData', [CurrentPos CurrentPos], ...
+           'LineWidth', 1.5);
+       
+       
+       end
+       
+       whilePlaying();
+       
+    end
+
 %% Callback on user hit: stop
     function CallbackStop(~,~)
                 
@@ -1520,6 +1494,16 @@ CalculateSpectrogram();
             'ActualRectPosition(2) is out of bounds. Will be fitted');
         ActualRectPosition(2) = OrigStartEndVal(2);
     end
+    if ActualRectPosition(1) < OrigStartEndVal(1)
+        warning('WFP:OutOfBounds', ...
+            'ActualRectPosition(1) is out of bounds. Will be fitted');
+        ActualRectPosition(1) = OrigStartEndVal(1);
+    end
+    if ActualRectPosition(2) < OrigStartEndVal(1)
+        warning('WFP:OutOfBounds', ...
+            'ActualRectPosition(2) is out of bounds. Will be fitted');
+        ActualRectPosition(2) = OrigStartEndVal(1)+0.001;
+    end
     
     
     switch length(ActualRectPosition)
@@ -1547,19 +1531,17 @@ CalculateSpectrogram();
     
     
     
-    
-    
         set(hRect, 'Position', vZoomPosition);
         axis(hOverviewAxes,OrigStartEndVal);
         
 
         if ~isempty(myPostZoomReturnStartEnd)
-            myPostZoomReturnStartEnd(vStartEndVal(1:2));
+            myPostZoomReturnStartEnd(vStartEndVal(1:2)); %#ok
         end
 
         
         iZoomWidth = vZoomPosition(3);
-        if vZoomPosition ~= OrigStartEndVal
+        if min(vZoomPosition ~= OrigStartEndVal) == 1
             set(hSliderHori,'Enable', 'on', ...
                 'Min',OrigStartEndVal(1)+iZoomWidth/2, ...
                 'Max',OrigStartEndVal(2)-iZoomWidth/2, ...
@@ -1573,8 +1555,12 @@ CalculateSpectrogram();
             set(hRect, 'EdgeColor', 'w')
         end
         
-        ReadAndComputeMaxData(1, vStartEndVal);
-        CalculateSpectrogram;
+        switch bWaveDisplayType
+            case 1
+                ReadAndComputeMaxData(1, vStartEndVal);
+            case 2
+                CalculateSpectrogram;
+        end
         
         
         % update GUI with new start and end time
@@ -1614,7 +1600,7 @@ CalculateSpectrogram();
         CalculateSpectrogram();
         
         if ~isempty(myPostSlideAction)
-           myPostSlideAction(vStartEndVal); 
+           myPostSlideAction(vStartEndVal); %#ok
         end
         
     end
