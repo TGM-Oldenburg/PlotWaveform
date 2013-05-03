@@ -1199,78 +1199,7 @@ CalculateSpectrogram();
         end
     end
 
-%% Callback on user hit: play
-    function CallbackPlay(~,~)
-        
-        bPlaySelectionFlag  = get(handles.hCheckSelection,  'Value');
-        bPlayAsLoopFlag     = get(handles.hCheckLoop,       'Value');
 
-        if bPlaySelectionFlag
-            
-            
-            FrmBeg  = floor(vZoomPosition(1)*fs);
-            FrmEnd  = floor((vZoomPosition(1)+vZoomPosition(3))*fs);
-            
-            if FrmEnd-FrmBeg < iBlockLen
-                mPlaybackData = zeros(iBlockLen, numChannels);
-                mPlaybackData(1:FrmEnd-FrmBeg,:) = ...
-                    wavData(FrmBeg:FrmEnd,:);
-            end
-            
-            mPlaybackData = wavData(FrmBeg:FrmEnd,:);
-            
-        else
-            mPlaybackData = wavData;
-        end
-        
-        
-       
-        
-        bIsPlayingFlag = 1;
-        bIsPausedFlag  = 0;
-        
-       set(handles.hPBPlay, 'Enable', 'off')
-       set(handles.hPBPause,'Enable', 'on')
-       set(handles.hPBStop, 'Enable', 'on')
-
-       
-       CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
-       szCurrentPos = sprintf('%8.3f',CurrentPos);
-       
-       set(handles.hValueCurrentPos, ...
-           'String', szCurrentPos)
-              
-       if ishandle(hOverviewPos)
-           delete(hOverviewPos)
-       end
-       
-       if ishandle(hWavePos)
-           delete(hWavePos)
-       end
-       
-       
-       hOverviewPos = line([CurrentPos CurrentPos],[-1.5 1.5], ...
-           'Parent', hOverviewAxes, ...
-           'Color', [000/255 000/255 000/255], ...
-           'XData', [CurrentPos CurrentPos], ...
-           'LineWidth', 1.5);
-       
-       hWavePos = zeros(1, length(hWaveAxes));
-       
-       for nn=1:numel(hWaveAxes)
-       
-           hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 1.5], ...
-           'Parent', hWaveAxes(nn), ...
-           'Color', [000/255 000/255 000/255], ...
-           'XData', [CurrentPos CurrentPos], ...
-           'LineWidth', 1.5);
-       
-       
-       end
-       
-       whilePlaying();
-       
-    end
 
 %% Function called while playing is activated
     function whilePlaying()
@@ -1413,6 +1342,79 @@ CalculateSpectrogram();
         ProcessingBlock = ProcessingBlockRouted;
         
         
+    end
+
+%% Callback on user hit: play
+    function CallbackPlay(~,~)
+        
+        bPlaySelectionFlag  = get(handles.hCheckSelection,  'Value');
+        bPlayAsLoopFlag     = get(handles.hCheckLoop,       'Value');
+
+        if bPlaySelectionFlag
+            
+            
+            FrmBeg  = floor(vZoomPosition(1)*fs);
+            FrmEnd  = floor((vZoomPosition(1)+vZoomPosition(3))*fs);
+            
+            if FrmEnd-FrmBeg < iBlockLen
+                mPlaybackData = zeros(iBlockLen, numChannels);
+                mPlaybackData(1:FrmEnd-FrmBeg,:) = ...
+                    wavData(FrmBeg:FrmEnd,:);
+            end
+            
+            mPlaybackData = wavData(FrmBeg:FrmEnd,:);
+            
+        else
+            mPlaybackData = wavData;
+        end
+        
+        
+       
+        
+        bIsPlayingFlag = 1;
+        bIsPausedFlag  = 0;
+        
+       set(handles.hPBPlay, 'Enable', 'off')
+       set(handles.hPBPause,'Enable', 'on')
+       set(handles.hPBStop, 'Enable', 'on')
+
+       
+       CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+       szCurrentPos = sprintf('%8.3f',CurrentPos);
+       
+       set(handles.hValueCurrentPos, ...
+           'String', szCurrentPos)
+              
+       if ishandle(hOverviewPos)
+           delete(hOverviewPos)
+       end
+       
+       if ishandle(hWavePos)
+           delete(hWavePos)
+       end
+       
+       
+       hOverviewPos = line([CurrentPos CurrentPos],[-1.5 1.5], ...
+           'Parent', hOverviewAxes, ...
+           'Color', [000/255 000/255 000/255], ...
+           'XData', [CurrentPos CurrentPos], ...
+           'LineWidth', 1.5);
+       
+       hWavePos = zeros(1, length(hWaveAxes));
+       
+       for nn=1:numel(hWaveAxes)
+       
+           hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 1.5], ...
+           'Parent', hWaveAxes(nn), ...
+           'Color', [000/255 000/255 000/255], ...
+           'XData', [CurrentPos CurrentPos], ...
+           'LineWidth', 1.5);
+       
+       
+       end
+       
+       whilePlaying();
+       
     end
 
 %% Callback on user hit: stop
