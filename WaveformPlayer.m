@@ -251,39 +251,39 @@ caLeftoverParams = processInputParameters(varargin);
             arg = cParameters{kk};
             if ischar(arg) && strcmpi(arg,'Parent')
                 hParentFig = cParameters{kk + 1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ShowXAxisAbove')
                 warnForOverride(arg)
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'PostZoomAction')
                 warnForOverride(arg)
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'PostSlideAction')
                 myPostSlideAction = cParameters{kk + 1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ReturnStartEnd')
                 myPostZoomReturnStartEnd = cParameters{kk + 1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
 %             if ischar(arg) && strcmpi(arg,'ColorsetFace')
 %                 warnForOverride(arg)
-%                 valuesToDelete = [valuesToDelete kk:kk+1];
+%                 valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
 %             end
 %             if ischar(arg) && strcmpi(arg,'ColorsetEdge')
 %                 warnForOverride(arg)
-%                 valuesToDelete = [valuesToDelete kk:kk+1];
+%                 valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
 %             end
             if ischar(arg) && strcmpi(arg,'ChannelView')
                 warnForOverride(arg)
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ZoomMode')
                 warnForOverride(arg)
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
         end
         
@@ -1554,7 +1554,7 @@ CalculateSpectrogram();
         
 
         if ~isempty(myPostZoomReturnStartEnd)
-            myPostZoomReturnStartEnd(vStartEndVal(1:2));
+            myPostZoomReturnStartEnd(vStartEndVal(1:2)); %#ok
         end
 
         
@@ -1614,7 +1614,7 @@ CalculateSpectrogram();
         CalculateSpectrogram();
         
         if ~isempty(myPostSlideAction)
-           myPostSlideAction(vStartEndVal); 
+           myPostSlideAction(vStartEndVal); %#ok
         end
         
     end
