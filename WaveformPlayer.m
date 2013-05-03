@@ -1500,6 +1500,16 @@ CalculateSpectrogram();
             'ActualRectPosition(2) is out of bounds. Will be fitted');
         ActualRectPosition(2) = OrigStartEndVal(2);
     end
+    if ActualRectPosition(1) < OrigStartEndVal(1)
+        warning('WFP:OutOfBounds', ...
+            'ActualRectPosition(1) is out of bounds. Will be fitted');
+        ActualRectPosition(1) = OrigStartEndVal(1);
+    end
+    if ActualRectPosition(2) < OrigStartEndVal(1)
+        warning('WFP:OutOfBounds', ...
+            'ActualRectPosition(2) is out of bounds. Will be fitted');
+        ActualRectPosition(2) = OrigStartEndVal(1)+0.001;
+    end
     
     
     switch length(ActualRectPosition)
