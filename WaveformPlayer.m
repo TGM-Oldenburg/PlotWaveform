@@ -216,7 +216,6 @@ vColormapVal    = [];
 OrigColormapVal = [];
 caParentDef     = [];
 
-
 %% Create prelim. flags
 bPlaySelectionFlag  = 1;
 bPlayAsLoopFlag     = 0;
@@ -334,7 +333,7 @@ stFuncHandles.NewZoomPosition = myPostZoomAction;
 if ispc
     guiFontSize        = 8;           % in pixels (default, Win)
 else
-    guiFontSize        = 12;           % in pixels (default, Unix)
+    guiFontSize        = 10;           % in pixels (default, Unix)
 end
 
 %% Call the goddess of all-mighty PlotWaveform
@@ -368,9 +367,6 @@ bMuteChannels = zeros(1, numChannels);
 
 init();
 
-
-CalculateSpectrogram();
-
 % PlotWaveform/SetOriginalZoom;
 
 %--------------------------------------------------------------------------
@@ -387,12 +383,11 @@ CalculateSpectrogram();
 
 %% Function to calculate the spectrogram overlay
     function CalculateSpectrogram
-        
+    
         GetAxesSize();
         
         for xx=1:length(hWaveAxes)
             
-            hold(hWaveAxes(xx), 'on')
             
             if bCalcSpectogram
                 OrigSpectrData = 20*log10(abs(...
@@ -427,17 +422,6 @@ CalculateSpectrogram();
                 'Tag', 'spectrs', ...
                 'Visible', 'on');
 
-            
-            bShowAsSpectrogram = get (handles.hCheckSpectrogram, 'Value');
-            
-            switch bShowAsSpectrogram
-                case 1
-                    set(hSpectrograms(xx), 'Visible', 'on');
-                    axis(hWaveAxes(xx) ,'xy', 'tight');
-                case 0
-                    set(hSpectrograms(xx), 'Visible', 'off');
-            end
-            
             szEval = ['colormap(hWaveAxes(' num2str(xx) '),' guiColormapDef ');'];
             
             eval(szEval);
@@ -493,14 +477,15 @@ CalculateSpectrogram();
 %         end
 
 
-        if bShowAsSpectrogram
+        if bWaveDisplayType == 2
 
             if isempty(OrigColormapVal)
                 OrigColormapVal =  get(hWaveAxes(1), 'CLim');
                 vColormapVal = OrigColormapVal;
             end
 
-
+            vColormapVal = sort(vColormapVal);
+            
             for xx=1:numel(hSpectrograms)
                 set(hWaveAxes(xx), 'CLim', vColormapVal);
             end
@@ -526,7 +511,7 @@ CalculateSpectrogram();
         else
             try guiBackgroundColor = get(hFigure, ...
                 'Color');
-            catch
+            catch %#ok
                 try guiBackgroundColor = get(hFigure, ...
                 'BackgroundColor');
                 catch error
@@ -556,8 +541,6 @@ CalculateSpectrogram();
             'Callback', @CalcNewStartEndValHori, ...
             'Enable', 'off', ...
             'Parent', hFigure);
-        
-        
         
         %% Generate overview axes
         hOverviewAxes = axes('Parent', hFigure);
@@ -1062,7 +1045,9 @@ CalculateSpectrogram();
         
         %% - - Callback on user modifying color map
         function modifyColormap(~,~,~)
-           
+        
+        if ~isempty(OrigColormapVal)
+            
             FigureHeight = 100;
             
             SliderVal(1) = OrigColormapVal(1)*(-1)+OrigColormapVal(1);
@@ -1539,8 +1524,6 @@ CalculateSpectrogram();
     
     
     
-    
-    
         set(hRect, 'Position', vZoomPosition);
         axis(hOverviewAxes,OrigStartEndVal);
         
@@ -1551,7 +1534,7 @@ CalculateSpectrogram();
 
         
         iZoomWidth = vZoomPosition(3);
-        if vZoomPosition ~= OrigStartEndVal
+        if min(vZoomPosition ~= OrigStartEndVal) == 1
             set(hSliderHori,'Enable', 'on', ...
                 'Min',OrigStartEndVal(1)+iZoomWidth/2, ...
                 'Max',OrigStartEndVal(2)-iZoomWidth/2, ...
