@@ -435,10 +435,7 @@ init();
 
             szEval = ['colormap(hWaveAxes(' num2str(xx) '),' guiColormapDef ');'];
             
-            eval(szEval);
-            
-            %             view(0,90);
-            
+            eval(szEval);            
             hold(hWaveAxes(xx), 'off')
             
             bCalcSpectogram = 0;
@@ -749,7 +746,7 @@ init();
             'FontSize', guiFontSize, ...
             'HorizontalAlign', 'left');
         
-        
+        %% Radio buttons for Waveform or Spectrogram        
         hDataToggle = uibuttongroup( ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
@@ -758,8 +755,6 @@ init();
             'FontSize', guiFontSize, ...
             'SelectionChangeFcn', @SwitchWaveDisplay);        
         
-        
-%         %% Checkmarks for Waveform and Spectrogram
         uicontrol(...
             'Style', 'radio', ...
             'Parent', hDataToggle, ...
@@ -1144,7 +1139,7 @@ init();
         end
         end
         
-        % Callback to callback: Process new depth values
+        %% - - - Callback to callback: Process new depth values
         function setNewColormapDepth(~, ~, ~)
             
             for pp=1:2
