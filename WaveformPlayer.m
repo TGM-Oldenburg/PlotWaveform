@@ -440,6 +440,12 @@ init();
             set(hWaveAxes(xx), ...
                 'YDir', 'normal');           % Fix for upside down y axis (2/2)
             
+            if xx == 1
+                set(hWaveAxes(xx), 'XAxisLocation', 'top');
+            else
+                set(hWaveAxes(xx), 'XTickLabel', '');
+            end
+            
             bCalcSpectogram = 0;
             OrigColormapVal = [];
                         
