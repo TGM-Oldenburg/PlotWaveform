@@ -1198,8 +1198,6 @@ init();
         end
     end
 
-
-
 %% Function called while playing is activated
     function whilePlaying()
 
@@ -1493,22 +1491,22 @@ init();
     
     if ActualRectPosition(1) >= OrigStartEndVal(2)
         warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(1) is out of bounds. Will be fitted');
+            'ActualRectPosition(1) is out of bounds. Will be fitted.');
         ActualRectPosition(1) = OrigStartEndVal(2)-0.001;
     end
     if ActualRectPosition(2) > OrigStartEndVal(2)
         warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(2) is out of bounds. Will be fitted');
+            'ActualRectPosition(2) is out of bounds. Will be fitted.');
         ActualRectPosition(2) = OrigStartEndVal(2);
     end
     if ActualRectPosition(1) < OrigStartEndVal(1)
         warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(1) is out of bounds. Will be fitted');
+            'ActualRectPosition(1) is out of bounds. Will be fitted.');
         ActualRectPosition(1) = OrigStartEndVal(1);
     end
     if ActualRectPosition(2) < OrigStartEndVal(1)
         warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(2) is out of bounds. Will be fitted');
+            'ActualRectPosition(2) is out of bounds. Will be fitted.');
         ActualRectPosition(2) = OrigStartEndVal(1)+0.001;
     end
     
@@ -1582,14 +1580,19 @@ init();
 
 %% Function to calculate new start and end values horizontally
     function CalcNewStartEndValHori(h, ~)
+        
         SliderValue = get(h, 'Value');
         StartEndVal(1) = SliderValue-iZoomWidth/2;
         StartEndVal(2) = SliderValue+iZoomWidth/2;
+        
         YLims = get(hAxes, 'YLim');
         StartEndVal(3:4) = YLims(1:2);
+        
         ReadAndComputeMaxData(1, StartEndVal);
+        
         YLims = get(hAxes, 'YLim');
         StartEndVal(3:4) = YLims(1:2);
+        
         vZoomPosition =  [...
             StartEndVal(1) ...
             StartEndVal(3) ...
