@@ -93,7 +93,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.34.1
+% VERSION 0.35
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -143,6 +143,10 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %               a little further down, so the exection 
 %               starts *after* re-writing the plots. 
 %               (at suggestion of Julian Kahnert) 
+%   Ver. 0.35   Realigned the spectrogram y axis to show    09-May-2013     JW
+%               in kHz and fixed a small bug resulting in 
+%               always showing a spectrogram when a slide
+%               action is performed. Other small fixes.
 
 %DEBUG
 %szFileName = 'TomShort.wav';
@@ -423,11 +427,11 @@ init();
                     floor(size(SpectrData, 1)/vAxesSize(2)));
             end
             
-            
+            SpectrData = flipud(SpectrData); % Fix for upside down y axis (1/2)
             
             hSpectrograms(xx) = imagesc(...
                 vStartEndVal(1:2), ...
-                vStartEndVal(3:4), ...
+                [0 fs/2000], ...
                 SpectrData, ...
                 'Parent', hWaveAxes(xx), ...
                 'Tag', 'spectrs', ...
@@ -435,11 +439,16 @@ init();
 
             szEval = ['colormap(hWaveAxes(' num2str(xx) '),' guiColormapDef ');'];
             
-            eval(szEval);
-            
-            %             view(0,90);
-            
+            eval(szEval);            
             hold(hWaveAxes(xx), 'off')
+            set(hWaveAxes(xx), ...
+                'YDir', 'normal');           % Fix for upside down y axis (2/2)
+            
+            if xx == 1
+                set(hWaveAxes(xx), 'XAxisLocation', 'top');
+            else
+                set(hWaveAxes(xx), 'XTickLabel', '');
+            end
             
             bCalcSpectogram = 0;
             OrigColormapVal = [];
@@ -749,7 +758,7 @@ init();
             'FontSize', guiFontSize, ...
             'HorizontalAlign', 'left');
         
-        
+        %% Radio buttons for Waveform or Spectrogram        
         hDataToggle = uibuttongroup( ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
@@ -758,8 +767,6 @@ init();
             'FontSize', guiFontSize, ...
             'SelectionChangeFcn', @SwitchWaveDisplay);        
         
-        
-%         %% Checkmarks for Waveform and Spectrogram
         uicontrol(...
             'Style', 'radio', ...
             'Parent', hDataToggle, ...
@@ -1144,7 +1151,7 @@ init();
         end
         end
         
-        % Callback to callback: Process new depth values
+        %% - - - Callback to callback: Process new depth values
         function setNewColormapDepth(~, ~, ~)
             
             for pp=1:2
@@ -1194,8 +1201,6 @@ init();
                 error('Internal error. Exiting.')
         end
     end
-
-
 
 %% Function called while playing is activated
     function whilePlaying()
@@ -1490,22 +1495,22 @@ init();
     
     if ActualRectPosition(1) >= OrigStartEndVal(2)
         warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(1) is out of bounds. Will be fitted');
+            'ActualRectPosition(1) is out of bounds. Will be fitted.');
         ActualRectPosition(1) = OrigStartEndVal(2)-0.001;
     end
     if ActualRectPosition(2) > OrigStartEndVal(2)
         warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(2) is out of bounds. Will be fitted');
+            'ActualRectPosition(2) is out of bounds. Will be fitted.');
         ActualRectPosition(2) = OrigStartEndVal(2);
     end
     if ActualRectPosition(1) < OrigStartEndVal(1)
         warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(1) is out of bounds. Will be fitted');
+            'ActualRectPosition(1) is out of bounds. Will be fitted.');
         ActualRectPosition(1) = OrigStartEndVal(1);
     end
     if ActualRectPosition(2) < OrigStartEndVal(1)
         warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(2) is out of bounds. Will be fitted');
+            'ActualRectPosition(2) is out of bounds. Will be fitted.');
         ActualRectPosition(2) = OrigStartEndVal(1)+0.001;
     end
     
@@ -1579,14 +1584,19 @@ init();
 
 %% Function to calculate new start and end values horizontally
     function CalcNewStartEndValHori(h, ~)
+        
         SliderValue = get(h, 'Value');
         StartEndVal(1) = SliderValue-iZoomWidth/2;
         StartEndVal(2) = SliderValue+iZoomWidth/2;
+        
         YLims = get(hAxes, 'YLim');
         StartEndVal(3:4) = YLims(1:2);
+        
         ReadAndComputeMaxData(1, StartEndVal);
+        
         YLims = get(hAxes, 'YLim');
         StartEndVal(3:4) = YLims(1:2);
+        
         vZoomPosition =  [...
             StartEndVal(1) ...
             StartEndVal(3) ...
@@ -1596,8 +1606,19 @@ init();
 
         vStartEndVal = StartEndVal;
         
-        CalculateSpectrogram();
+        iCurViewState = str2double(...
+            get(get(hDataToggle, 'SelectedObject'), 'Tag'));
         
+        switch iCurViewState
+            case 1
+                bWaveDisplayType = 1;
+                ReadAndComputeMaxData();
+                
+            case 2
+                bWaveDisplayType = 2;
+                CalculateSpectrogram();
+        end
+                
         if ~isempty(myPostSlideAction)
            myPostSlideAction(vStartEndVal); %#ok
         end
