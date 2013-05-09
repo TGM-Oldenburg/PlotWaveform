@@ -1529,17 +1529,9 @@ init();
             error('ActualRectPosition has to be 2 or 4 element vector')
     end
     
-    
-    
         set(hRect, 'Position', vZoomPosition);
         axis(hOverviewAxes,OrigStartEndVal);
-        
-
-        if ~isempty(myPostZoomReturnStartEnd)
-            myPostZoomReturnStartEnd(vStartEndVal(1:2)); %#ok
-        end
-
-        
+                
         iZoomWidth = vZoomPosition(3);
         if min(vZoomPosition ~= OrigStartEndVal) == 1
             set(hSliderHori,'Enable', 'on', ...
@@ -1562,6 +1554,9 @@ init();
                 CalculateSpectrogram;
         end
         
+        if ~isempty(myPostZoomReturnStartEnd)
+            myPostZoomReturnStartEnd(vStartEndVal(1:2)); %#ok
+        end
         
         % update GUI with new start and end time
         szSelectionStart = sprintf('%8.3f s', ...
