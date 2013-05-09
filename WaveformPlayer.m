@@ -423,7 +423,7 @@ init();
                     floor(size(SpectrData, 1)/vAxesSize(2)));
             end
             
-            
+            SpectrData = flipud(SpectrData); % Fix for upside down y axis (1/2)
             
             hSpectrograms(xx) = imagesc(...
                 vStartEndVal(1:2), ...
@@ -437,6 +437,8 @@ init();
             
             eval(szEval);            
             hold(hWaveAxes(xx), 'off')
+            set(hWaveAxes(xx), ...
+                'YDir', 'normal');           % Fix for upside down y axis (2/2)
             
             bCalcSpectogram = 0;
             OrigColormapVal = [];
