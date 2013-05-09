@@ -93,7 +93,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.35
+% VERSION 0.35.1
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -147,6 +147,8 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %               in kHz and fixed a small bug resulting in 
 %               always showing a spectrogram when a slide
 %               action is performed. Other small fixes.
+%   Ver. 0.35.1 Fix: Audio playback won't lead to crash     09-May-2013     JW
+%               when changing view type
 
 %DEBUG
 %szFileName = 'TomShort.wav';
@@ -169,8 +171,8 @@ end
 vUpperAxesPos       = [ 0.05    0.45    0.90    0.50];
 vOverviewAxesPos    = [ 0.05    0.23    0.90    0.15];
 
-myColorsetFace      = [ 051/255 051/255 230/255; ...    % blue
-                        230/255 051/255 051/255; ...    % red
+myColorsetFace      = [ 061/255 129/255 136/255; ...    % blue
+                        223/255 104/255 098/255; ...    % red
                         051/255 230/255 051/255; ...    %
                         230/255 230/255 051/255; ...
                         230/255 051/255 230/255; ...
@@ -230,6 +232,7 @@ iRedrawCounter  = 0;
 vColormapVal    = [];
 OrigColormapVal = [];
 caParentDef     = [];
+CurrentPos      = [];
 
 %% Create prelim. flags
 bPlaySelectionFlag  = 1;
@@ -1224,8 +1227,12 @@ init();
                 set(hOverviewPos, ...
                     'XData', [CurrentPos CurrentPos]);
                 
-                set(hWavePos, ...
-                    'XData', [CurrentPos CurrentPos]);
+                if ~ishandle(hWavePos)
+                    createWavePosLine;
+                else
+                    set(hWavePos, ...
+                        'XData', [CurrentPos CurrentPos]);
+                end
                 
                 drawnow;
                 % SUPER INEFFICIENT! ALTERNATIVE?
@@ -1402,21 +1409,29 @@ init();
            'LineWidth', 1.5);
        
        hWavePos = zeros(1, length(hWaveAxes));
-       
-       for nn=1:numel(hWaveAxes)
-       
-           hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 1.5], ...
-           'Parent', hWaveAxes(nn), ...
-           'Color', [000/255 000/255 000/255], ...
-           'XData', [CurrentPos CurrentPos], ...
-           'LineWidth', 1.5);
-       
-       
-       end
+
+       createWavePosLine;
        
        whilePlaying();
        
     end
+
+    function createWavePosLine
+        
+        for nn=1:numel(hWaveAxes)
+            
+            hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 fs/2], ...
+                'Parent', hWaveAxes(nn), ...
+                'Color', [000/255 000/255 000/255], ...
+                'XData', [CurrentPos CurrentPos], ...
+                'LineWidth', 1.5);
+            
+            
+        end
+        
+    end
+
+
 
 %% Callback on user hit: stop
     function CallbackStop(~,~)
