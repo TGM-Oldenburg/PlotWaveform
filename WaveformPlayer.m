@@ -1602,8 +1602,19 @@ init();
 
         vStartEndVal = StartEndVal;
         
-        CalculateSpectrogram();
+        iCurViewState = str2double(...
+            get(get(hDataToggle, 'SelectedObject'), 'Tag'));
         
+        switch iCurViewState
+            case 1
+                bWaveDisplayType = 1;
+                ReadAndComputeMaxData();
+                
+            case 2
+                bWaveDisplayType = 2;
+                CalculateSpectrogram();
+        end
+                
         if ~isempty(myPostSlideAction)
            myPostSlideAction(vStartEndVal); %#ok
         end
