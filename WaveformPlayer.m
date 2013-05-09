@@ -93,7 +93,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.34
+% VERSION 0.34.1
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -139,6 +139,10 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %               Fix: Colormap depth works again and slider
 %               input is now even better verified in the
 %               zoom post action callback.
+%   Ver. 0.34.1 Fix: Moved the function handle (post zoom)  09-May-2013     JW
+%               a little further down, so the exection 
+%               starts *after* re-writing the plots. 
+%               (at suggestion of Julian Kahnert) 
 
 %DEBUG
 %szFileName = 'TomShort.wav';
@@ -1529,17 +1533,9 @@ init();
             error('ActualRectPosition has to be 2 or 4 element vector')
     end
     
-    
-    
         set(hRect, 'Position', vZoomPosition);
         axis(hOverviewAxes,OrigStartEndVal);
-        
-
-        if ~isempty(myPostZoomReturnStartEnd)
-            myPostZoomReturnStartEnd(vStartEndVal(1:2)); %#ok
-        end
-
-        
+                
         iZoomWidth = vZoomPosition(3);
         if min(vZoomPosition ~= OrigStartEndVal) == 1
             set(hSliderHori,'Enable', 'on', ...
@@ -1562,6 +1558,9 @@ init();
                 CalculateSpectrogram;
         end
         
+        if ~isempty(myPostZoomReturnStartEnd)
+            myPostZoomReturnStartEnd(vStartEndVal(1:2)); %#ok
+        end
         
         % update GUI with new start and end time
         szSelectionStart = sprintf('%8.3f s', ...
