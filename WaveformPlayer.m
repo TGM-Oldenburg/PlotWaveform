@@ -93,7 +93,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.34.1
+% VERSION 0.35
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -143,6 +143,10 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %               a little further down, so the exection 
 %               starts *after* re-writing the plots. 
 %               (at suggestion of Julian Kahnert) 
+%   Ver. 0.35   Realigned the spectrogram y axis to show    09-May-2013     JW
+%               in kHz and fixed a small bug resulting in 
+%               always showing a spectrogram when a slide
+%               action is performed. Other small fixes.
 
 %DEBUG
 %szFileName = 'TomShort.wav';
