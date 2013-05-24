@@ -58,6 +58,16 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %                       performed. The function handle has to be defined first
 %                       Example see 'ReturnStartEnd' above.
 %
+%   'PostViewChangeAction': user defined functino handle of a function present
+%                           in the mother function that will receive the
+%                           current view mode as integer:
+%
+%                               1: waveform display
+%                               2: spectrogram display
+%  
+%                           The function handle has to be defined first.
+%                           Example see 'ReturnStartEnd' above.
+%
 %
 %       NOTE: WaveformPlayer supports all the behavioral settings that
 %       PlotWaveform itself does, with except for the following. Those are used
@@ -93,7 +103,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.35.1
+% VERSION 0.36
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -149,6 +159,9 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %               action is performed. Other small fixes.
 %   Ver. 0.35.1 Fix: Audio playback won't lead to crash     09-May-2013     JW
 %               when changing view type
+%   Ver. 0.36   Change: "PostViewChangeAction" func handle  24-May-2013     JW
+%               is executed after the view is changed from
+%               waveform to spectrogram or vice versa
 
 %DEBUG
 %szFileName = 'TomShort.wav';
