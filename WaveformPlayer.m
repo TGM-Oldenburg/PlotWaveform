@@ -1208,7 +1208,7 @@ init();
         end
         
         if ~isempty(myPostViewChangeAction)
-            myPostViewChangeAction;
+            myPostViewChangeAction(iCurState); %#ok
         end
         
     end
