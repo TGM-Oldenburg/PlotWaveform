@@ -257,6 +257,7 @@ hSpectrograms   = [];
 hParentFig      = [];
 myPostZoomReturnStartEnd    = [];
 myPostSlideAction           = [];
+myPostViewChangeAction      = [];
 
 caLeftoverParams = processInputParameters(varargin);
 
@@ -299,6 +300,10 @@ caLeftoverParams = processInputParameters(varargin);
             end
             if ischar(arg) && strcmpi(arg,'ZoomMode')
                 warnForOverride(arg)
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
+            end
+            if ischar(arg) && strcmpi(arg,'PostViewChangeAction')
+                myPostViewChangeAction = cParameters{kk + 1};
                 valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
         end
@@ -1184,8 +1189,6 @@ init();
 
 
     function SwitchWaveDisplay(~, event)
-        fprintf('Toggled!\n')
-        
         
         iCurState = str2double(get(event.NewValue, 'Tag'));
         
@@ -1203,6 +1206,11 @@ init();
             otherwise
                 error('Internal error. Exiting.')
         end
+        
+        if ~isempty(myPostViewChangeAction)
+            myPostViewChangeAction;
+        end
+        
     end
 
 %% Function called while playing is activated
