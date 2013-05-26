@@ -103,7 +103,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.36
+% VERSION 0.36.1
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -162,6 +162,8 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %   Ver. 0.36   Change: "PostViewChangeAction" func handle  24-May-2013     JW
 %               is executed after the view is changed from
 %               waveform to spectrogram or vice versa
+%   Ver. 0.36.1 Fix: Slider bug in relation to NewZomPos.   27-May-2013     JW
+%               fun handle leading to inability to slide
 
 %DEBUG
 %szFileName = 'TomShort.wav';
@@ -1540,8 +1542,6 @@ init();
         ActualRectPosition(2) = OrigStartEndVal(2);
     end
     if ActualRectPosition(1) < OrigStartEndVal(1)
-        warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(1) is out of bounds. Will be fitted.');
         ActualRectPosition(1) = OrigStartEndVal(1);
     end
     if ActualRectPosition(2) < OrigStartEndVal(1)
@@ -1578,7 +1578,7 @@ init();
         axis(hOverviewAxes,OrigStartEndVal);
                 
         iZoomWidth = vZoomPosition(3);
-        if min(vZoomPosition ~= OrigStartEndVal) == 1
+        if sum(vZoomPosition ~= OrigStartEndVal) < 4
             set(hSliderHori,'Enable', 'on', ...
                 'Min',OrigStartEndVal(1)+iZoomWidth/2, ...
                 'Max',OrigStartEndVal(2)-iZoomWidth/2, ...
