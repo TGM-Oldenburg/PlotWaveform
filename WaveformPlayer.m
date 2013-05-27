@@ -103,7 +103,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %
 
 %--------------------------------------------------------------------------
-% VERSION 0.36.1
+% VERSION 0.36.2
 %   Author: Jan Willhaus (c) IHA @ Jade Hochschule
 %   applied licence see EOF
 %
@@ -164,6 +164,8 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %               waveform to spectrogram or vice versa
 %   Ver. 0.36.1 Fix: Slider bug in relation to NewZomPos.   27-May-2013     JW
 %               fun handle leading to inability to slide
+%   Ver. 0.36.2 Fix: Again the slider bug. Hotfix 0.36.1    27-May-2013     JW
+%               Had a tiny fault in it.
 
 %DEBUG
 %szFileName = 'TomShort.wav';
@@ -1578,7 +1580,7 @@ init();
         axis(hOverviewAxes,OrigStartEndVal);
                 
         iZoomWidth = vZoomPosition(3);
-        if sum(vZoomPosition ~= OrigStartEndVal) < 4
+        if sum(vZoomPosition ~= OrigStartEndVal) > 0
             set(hSliderHori,'Enable', 'on', ...
                 'Min',OrigStartEndVal(1)+iZoomWidth/2, ...
                 'Max',OrigStartEndVal(2)-iZoomWidth/2, ...
