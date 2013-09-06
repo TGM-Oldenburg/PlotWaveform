@@ -1,7 +1,7 @@
-# PLOTWAVEFORM waveform plotting tool
+# PLOTWAVEFORM waveform plotting
 
 ## Synposis
-**PlotWaveform plots the waveform of a WAVE-file, or vector of WAVE-data using a block by block mean calculation algorithm. WAVE-data first gets split into a number of blocks defined by the size of the axis (and therefore the available pixelwidth) which enables the most precise rendering of the data while using less CPU cycles then in normal plot calculation.**
+**PlotWaveform (PWF) is a MATLAB tool to plot the waveform of a WAVE-file using a block-by-block mean calculation algorithm, using a number of blocks defined by the size of the axis (and therefore the available pixelwidth) which enables the most precise rendering of the data while using less CPU cycles then in normal ```plot();``` calculation. Additionally PWF supports a secondary display layer, in which WAVE-data is plotted sample-exact just as the default ```plot();``` function would do. This layer is used only when a certain number of samples is not exceeded anymore. A third display layer supports the displayal of  sample-exact data in the views of ```stems();``` or ```stairs();``` functions. This view is set for the tightly zoomed WAVE portions.**
 
 ## Usage
 
@@ -147,6 +147,18 @@
 %               now be placed in axes even with channel
 %               view activated. All channels will be 
 %               plotted in place of the "parent" axes.
+%
+%   Ver. 1.0    Major release! PWF is now extremely fast   06-Sep-2013      JW
+%               in working with huge files, due to a new
+%               approach to block-processing the wavread
+%               itself. 1GB of wave can easily be loaded
+%               in about 15 seconds, while staying low in
+%               memory consumption.
+%               Additional info: future versioning info 
+%               will be placed inside the CHANGELOG.md 
+%               file included in the repo. That way it is 
+%               easier to handle the multiple functions of 
+%               the bundle. Cheers!
 ```
 
 ## Licensing
