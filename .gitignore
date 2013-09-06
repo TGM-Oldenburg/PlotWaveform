@@ -11,4 +11,6 @@ TomShort.wav
 *.ini
 *.log
 *.zip
+*.pkf
+calc*.m
 MultiFigTest.m
