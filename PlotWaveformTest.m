@@ -4,9 +4,10 @@ disp('----------------- Start Tester -----------------')
 
 % szFileName = '/Users/janwillhaus/Documents/MATLAB/ichwillnur.wav';
 
-szFileName = 'SampleShort.wav';
+% szFileName = 'SampleShort.wav';
 % szFileName = 'SampleMid.wav';
-% szFileName = 'SampleLong.wav';
+szFileName = 'SampleLong.wav';
+% szFileName = 'D:\Audio\Movie Audio\Katze_auf_dem_heissen_Dach_ita';
 % szFileName = 'song4channels.wav';
 % szFileName = 'songLeftLoud.wav';
 % szFileName = 'SampleFlipChannel.wav';
@@ -25,7 +26,10 @@ szFileName = 'SampleShort.wav';
 % h = PlotWaveform(szFileName, 'ChannelView', 1, 'PaperPosition', [0 0 16 5], 'SilentPrint', 1,'PrintResolution', 150, 'Interval', [0 0.1]);
 
 % testing internal print via function handle
-[hFigure hAxes hPrint]= PlotWaveform(szFileName,'ChannelView',1,  'SampleViewStyle',1);
+tic;
+[hFigure hAxes hPrint]= PlotWaveform(szFileName,...
+    'ChannelView',1,  'SampleViewStyle',1, 'Verbose',1);
+toc;
 %[hFigure hAxes hPrint]= PlotWaveform(szFileName,'ChannelView',1, 'SampleViewStyle',1);
 % hPrint(gcf,'-depsc',sprintf('%s-SampleViewStyleTest.eps',szFileName),'-painters','PaperPosition', [2 2 16 10],'SilentPrint',0) 
 

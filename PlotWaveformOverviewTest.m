@@ -9,12 +9,12 @@ fprintf('\n\n\n.\n.\n.\n-------------- Start Tester --------------\n')
 tic
 % szFileName = 'SampleShort.wav';
 %   szFileName = 'SampleMid.wav';
-% szFileName = 'SampleLong.wav';
+szFileName = 'SampleLong.wav';
 %szFileName = 'song4channels.wav';
 % szFileName = 'songLeftLoud.wav';
 % szFileName = 'SampleFlipChannel.wav';
 % szFileName = 'SampleShort8channels.wav';
-szFileName = 'TomShort.wav';
+% szFileName = 'TomShort.wav';
 
 % % % for input data vector testing
 % xyz = wavread(szFileName);
@@ -34,7 +34,7 @@ szFileName = 'TomShort.wav';
 % set(gcf, 'Position', [80 536 1760 420]);
 % testing internal print via function handle
 % [hFigure hAxes hOverview] = PlotWaveformOverview(szFileName);
-PlotWaveformOverview(szFileName, 'ShowWaveOverview', 1, 'ShowPositionSliders', 1);
+PlotWaveformOverview(szFileName, 'ShowWaveOverview', 1, 'ShowPositionSliders', 1, 'Verbose',1);
 %[hFigure hAxes hPrint]= PlotWaveform(szFileName,'ChannelView',1, 'SampleViewStyle',1);
 % hPrint(gcf,'-depsc',sprintf('%s-SampleViewStyleTest.eps',szFileName),'-painters','PaperPosition', [2 2 16 10],'SilentPrint',0) 
 

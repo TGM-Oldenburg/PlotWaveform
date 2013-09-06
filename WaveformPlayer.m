@@ -168,7 +168,7 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %               Had a tiny fault in it.
 
 %DEBUG
-%szFileName = 'TomShort.wav';
+% szFileName = 'SampleLong.wav';
 % close gcf
 
 %% evaluation of input data
@@ -219,20 +219,21 @@ auxSize             = [ 400 300];
 
 %% Set global settings
 szSaveFileTitle = 'WaveformPlayer.ini';
-iBlockLen       = 1024*4;
+iBlockLen       = 1024*8;
 iWinMin         = 256;
 iWinDef         = 2048;
 iWinMax         = 8192;
 iNFFTMin        = 256;
 iNFFTDef        = 512;
 iNFFTMax        = 8192;
-iUpdateInterval = 2;
+iUpdateInterval = 1;
 iIconSize       = 24;
 globsetOutputID = 0;
 
+vPlayStartEnd = [];
+
 %% Set global variables
 PlayIdx         = 1;
-mPlaybackData   = []; 
 vZoomPosition   = [];
 vButtonSize     = [];
 vOutputDevices  = [];
@@ -240,7 +241,8 @@ vSelectedDevice = [];
 vAxesSize       = [];
 iZoomWidth      = [];
 vStartEndVal    = [];
-OrigSpectrData  = [];
+caOrigSpectrData= {};
+maOrigSpectrData= [];
 routingMatrix   = [];
 stDevices       = [];
 defaultIDs      = [];
@@ -272,6 +274,9 @@ hWavePos        = [];
 hDataToggle     = [];
 hSpectrograms   = [];
 hParentFig      = [];
+hLoudnessPanel  = [];
+hToolsPanel     = [];
+
 myPostZoomReturnStartEnd    = [];
 myPostSlideAction           = [];
 myPostViewChangeAction      = [];
@@ -387,14 +392,14 @@ end
     OrigTime_vek, ...
     numChannels, ...
     ReadAndComputeMaxData, ...
-    wavData, ~, fs] = PlotWaveform(szFileName, ...
+    vWaveSize, fs] = PlotWaveform(szFileName, ...
     'ShowXAxisAbove', 1, ...
     'PostZoomAction', myPostZoomAction, ...
     'ColorsetFace',   myColorsetFace, ...
     'ColorsetEdge',   myColorsetEdge, ...
     'ChannelView', 1, ...
     'ZoomMode', 2, ...
-    caLeftoverParams, ...
+    caLeftoverParams{:}, ...
     caParentDef{:});
 
 vStartEndVal = [...
@@ -424,33 +429,85 @@ init();
 %% Function to calculate the spectrogram overlay
     function CalculateSpectrogram
     
+        specProg = make_prog_bar('Spectrogram overlay');
         GetAxesSize();
+        
+        if bCalcSpectogram
+            
+            nBlockSize = iWinDef*100;
+            nBlocks = ceil(vWaveSize(1)/nBlockSize);
+            
+            caOrigSpectrData = cell(nBlocks, vWaveSize(2));
+            maOrigSpectrData = [];
+
+            specProg('Generating full spectrogram', 1, nBlocks*vWaveSize(2));
+            count = 1;
+            
+            for nBlockIdx=1:nBlocks
+                
+                
+                if nBlockIdx*nBlockSize > vWaveSize(1)
+                    blockEnd = vWaveSize(1);
+                else
+                    blockEnd = nBlockIdx*nBlockSize;
+                end
+                
+                curBlock = wavread(szFileName, ...
+                    [(nBlockIdx-1)*nBlockSize+1 ...
+                    blockEnd]);
+                
+                for chanIdx=1:vWaveSize(2)
+                    
+                    specProg(count);
+                    count = count+1;
+                    
+
+                    
+                    curSpec = spectrogram(...
+                        curBlock(:,chanIdx), iWinDef, [], iNFFTDef, 'yaxis');
+                    
+                    caOrigSpectrData{nBlockIdx, chanIdx} = curSpec;
+                    
+                    if nBlockIdx == nBlocks
+                        
+                        maOrigSpectrData(:,:,chanIdx) = 20*log10(abs(...
+                            cell2mat(caOrigSpectrData(:,chanIdx)')));
+                    end
+                    
+                end
+            end
+            specProg(count);
+        else
+            specProg('Reloading original data', 'info');
+        end
         
         for xx=1:length(hWaveAxes)
             
-            
-            if bCalcSpectogram
-                OrigSpectrData = 20*log10(abs(...
-                    spectrogram(wavData(:, xx), iWinDef, [], iNFFTDef, 'yaxis')));        
-                
-            end
-
             SpectrInterval(1) = floor(...
-                vStartEndVal(1)/OrigStartEndVal(2)*size(OrigSpectrData,2))+1;
+                vStartEndVal(1)/OrigStartEndVal(2)*size(maOrigSpectrData,2))+1;
             SpectrInterval(2) = floor(...
-                vStartEndVal(2)/OrigStartEndVal(2)*size(OrigSpectrData,2));
+                vStartEndVal(2)/OrigStartEndVal(2)*size(maOrigSpectrData,2));
             
-            SpectrData = OrigSpectrData(:, SpectrInterval(1):SpectrInterval(2));
+            SpectrData = maOrigSpectrData(...
+                :, SpectrInterval(1):SpectrInterval(2), xx);
+            
+            specProg(['Resampling channel ' num2str(xx)], 1, 3);
             
             if size(SpectrData, 2) > vAxesSize(1)
+                
                 SpectrData = resample(SpectrData', 1, ...
                     floor(size(SpectrData, 2)/vAxesSize(1)))';
+
             end
+            specProg(2);
             
             if size(SpectrData, 1) > vAxesSize(2)
                 SpectrData = resample(SpectrData,  1, ...
                     floor(size(SpectrData, 1)/vAxesSize(2)));
+                
+                
             end
+            specProg(3);
             
             SpectrData = flipud(SpectrData); % Fix for upside down y axis (1/2)
             
@@ -481,7 +538,8 @@ init();
         end
         
         SetSpectrColordepth;
-        
+        specProg('done')
+
     end
 
 %% Set the spectrogram's color depth
@@ -1205,6 +1263,131 @@ init();
     end
 
 
+%% Callback for user changing the tool visibility
+    function showTools(~,~,~)
+        
+        handlesToChange = [handles.hPlayer, ...
+            hOverviewAxes, ...
+            hWaveAxes(:)', ...
+            hSliderHori];
+        
+        
+        for nn=1:numel(handlesToChange)
+            curHandlePos = get(handlesToChange(nn), 'Position');
+            
+            
+            set(handlesToChange(nn), ...
+                'Position', [...
+                curHandlePos(1:2) ...
+                curHandlePos(3)-ToolsWidth ...
+                curHandlePos(4)]);
+            
+        end
+        
+        ToolsWidth = ToolsWidth*(-1);
+        bToolsFlag = bToolsFlag*(-1);
+        
+        if bToolsFlag == -1
+            set(handles.hMenubarTools(2), 'Checked', 'off');
+            if ~isempty(hLoudnessPanel)
+                set(hToolsPanel, 'Visible', 'off')
+            end
+        else
+            set(handles.hMenubarTools(2), 'Checked', 'on');
+            if ~isempty(hLoudnessPanel)
+                set(hToolsPanel, 'Visible', 'on')
+            end
+        end
+        
+        if isempty(hLoudnessPanel)
+            
+            calculateOverallLoudness_ITU();
+            
+            hToolsPanel = uipanel(...
+                'Parent', hFigure, ...
+                'Units', 'normalized', ...
+                'Position', [0.97-abs(ToolsWidth) 0.05 abs(ToolsWidth) 0.9], ...
+                'BackgroundColor', guiBackgroundColor);
+            
+            hLoudnessPanel = uipanel(...
+                'Parent', hToolsPanel, ...
+                'Units', 'normalized', ...
+                'Position', [0.05 0.05 0.9 0.25], ...
+                'BackgroundColor', guiBackgroundColor, ...
+                'Title', 'Overall Loudness');
+            
+            
+            
+            uicontrol('style', 'text', ...
+                'parent', hLoudnessPanel, ...
+                'String', 'EBU-R 128-2011:', ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'FontSize', guiFontSize, ...
+                'Units', 'normalized', ...
+                'Position', [0.05 0.65 0.9 0.2]);
+            
+            uicontrol('style', 'text', ...
+                'parent', hLoudnessPanel, ...
+                'String', sprintf('%.2f LUFS', L_KG), ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'FontSize', guiFontSize+1, ...
+                'Units', 'normalized', ...
+                'Position', [0.05 0.50 0.9 0.2]);
+            
+            
+            
+            uicontrol('style', 'text', ...
+                'parent', hLoudnessPanel, ...
+                'String', 'ITU-R BS.1770-3:', ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'FontSize', guiFontSize, ...
+                'Units', 'normalized', ...
+                'Position', [0.05 0.2 0.9 0.2]);
+            
+            uicontrol('style', 'text', ...
+                'parent', hLoudnessPanel, ...
+                'String', sprintf('%.2f LKFS', L_KG), ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'FontSize', guiFontSize+1, ...
+                'Units', 'normalized', ...
+                'Position', [0.05 0.05 0.9 0.2]);
+            
+            
+            
+            %% Checkmarks for channel muting
+            for channel=1:numel(hWaveAxes)
+                hWaveAxesPos = get(hWaveAxes(channel), 'Position');
+                
+                ChanMuteXPos = hWaveAxesPos(1)+hWaveAxesPos(3)+0.005;
+                
+                handles.hCheckChanMute(channel) = uicontrol(...
+                    'Style', 'checkbox', ...
+                    'Parent', hToolsPanel, ...
+                    'Units', 'normalized', ...
+                    'Position', [0.05 hWaveAxesPos(2) ...
+                    1-ChanMuteXPos-0.001 hWaveAxesPos(4)], ...
+                    'BackgroundColor', guiBackgroundColor-0, ...
+                    'String', '', ...
+                    'FontSize', guiFontSize, ...
+                    'Value', bMuteChannels(channel), ...
+                    'Callback', @MuteChannel);
+            end
+            
+        end
+        
+    end
+
+
+%% Callback for user changing mute state
+    function MuteChannel(~, ~, ~)
+        
+        checkValue = get(handles.hCheckChanMute(:), 'Value');
+        bMuteChannels = cell2mat(checkValue)';
+        
+    end
+
+
+%% Switch the type of display (waveform / spectrogram)
     function SwitchWaveDisplay(~, event)
         
         iCurState = str2double(get(event.NewValue, 'Tag'));
@@ -1233,6 +1416,9 @@ init();
 %% Function called while playing is activated
     function whilePlaying()
 
+        PlayIdx = PlayIdx-1;
+        curStartIdx = PlayIdx+vPlayStartEnd(1);
+        
         while bIsPlayingFlag
             
             
@@ -1240,7 +1426,6 @@ init();
             tic
             
             if iRedrawCounter == iUpdateInterval
-                
                 iRedrawCounter = 0;
                 
                 CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
@@ -1264,59 +1449,63 @@ init();
             else
                 iRedrawCounter = iRedrawCounter+1;
             end
+
+            %% Actual Playback actions
             
-            %% Actuall Playback actions         
-            if PlayIdx+iBlockLen-1 > length(mPlaybackData)
+            % Handle end of playback section first if occurs: needs zeropadding
+            if vPlayStartEnd(1)+PlayIdx+iBlockLen-1 > vPlayStartEnd(2)
                 
-                % End of wave is reached. Set flag
+                % End of playback section is reached. Set flag.
                 bIsEndOfWaveFlag = 1;
-                                
-                % For left over samples generate ZeroPadded block
+                
+                % For left over samples: generate ZeroPadded block
                 OutZP = zeros(iBlockLen, numChannels);
+
+                curBlock = wavread(szFileName, ...
+                    [curStartIdx vPlayStartEnd(2)]);
                 
-                % Determine where the padding starts
-                EndOfSamples = length(mPlaybackData(PlayIdx:end, :));
-                
-                % Fill the vector with the left blocks, leaving the zero
-                % padding at the end to fill the block length
-                OutZP(1:EndOfSamples, :) = mPlaybackData(PlayIdx:end, :);
-                
-                OutZP = RoutingAndMuting(OutZP);
+                OutZP(1:length(curBlock),:) = curBlock;
                 
                 % Output
                 T = toc;
                 if bPlaybackSupportFlag
+                    OutZPComplete = RoutingAndMuting(OutZP);
+                    
                     msound('putsamples', ...
-                        OutZP)
+                        OutZPComplete);
                 else
-                    pause(length(OutZP)/fs-T)
+                    pause(iBlockLen/fs-T)
                 end
                 % Resetting playback index
-                PlayIdx = 1;
+                PlayIdx = 0;
                 
                 % In case of non-looped playback, kill the while loop
                 if ~bPlayAsLoopFlag
                     bIsPlayingFlag   = 0;
                 end
                 
-                
             elseif bIsPlayingFlag
                 
-                T = toc;
                 if bPlaybackSupportFlag
                     
-                OutZPComplete = RoutingAndMuting(mPlaybackData(PlayIdx:PlayIdx+iBlockLen-1, :))  ;
+                    curBlock = wavread(szFileName, ...
+                        [curStartIdx ...
+                         curStartIdx+iBlockLen-1]);
                     
-                msound('putsamples', ...
-                    OutZPComplete);
+                    OutZPComplete = RoutingAndMuting(curBlock);
+                    
+                    msound('putsamples', ...
+                        OutZPComplete);
                 else
+                    T = toc;
                     pause(iBlockLen/fs-T)
                 end
-                PlayIdx = PlayIdx+iBlockLen;
+                
+                
+                PlayIdx = PlayIdx+iBlockLen-1;
+                curStartIdx = PlayIdx+vPlayStartEnd(1);
                 
             end
-            
-            
         end
         
         % Activate the correct UI buttons
@@ -1386,19 +1575,13 @@ init();
         if bPlaySelectionFlag
             
             
+            
             FrmBeg  = floor(vZoomPosition(1)*fs);
             FrmEnd  = floor((vZoomPosition(1)+vZoomPosition(3))*fs);
             
-            if FrmEnd-FrmBeg < iBlockLen
-                mPlaybackData = zeros(iBlockLen, numChannels);
-                mPlaybackData(1:FrmEnd-FrmBeg,:) = ...
-                    wavData(FrmBeg:FrmEnd,:);
-            end
-            
-            mPlaybackData = wavData(FrmBeg:FrmEnd,:);
-            
+            vPlayStartEnd = [FrmBeg FrmEnd];
         else
-            mPlaybackData = wavData;
+            vPlayStartEnd = [1 vWaveSize(1)];
         end
         
         
@@ -1680,6 +1863,114 @@ init();
         
         
         save(szSaveFile, 'globset*', 'gui*', '-mat')
+        
+    end
+
+%% Calculate ITU loudness rating BS1770-3
+    function calculateOverallLoudness_ITU
+        
+        ITUprog = make_prog_bar('ITU Loudness rating');
+        
+        T_gating = 0.400; %seconds
+        T_overlap = 0.75; %percent
+        
+        Gamma_a = -70;
+        Gamma_r_substractor = 10;
+        Prefactor = -0.691;
+        
+        % Filter coefficients for K stages 1 and 2
+        bKFilt1 = [1.53512485958697,    -2.69169618940638,  1.19839281085285];
+        aKFilt1 = [1,                   -1.69065929318241,  0.73248077421585];
+        
+        bKFilt2 = [1.0,                 -2.0,               1.0             ];
+        aKFilt2 = [1.0,                 -1.99004745483398,  0.99007225036621];
+        
+        % Channel weightings for multichannel audio (L-C-R-Ls-Rs)
+        G_i = [1.0, 1.0, 1.0, 1.41, 1.41];
+        
+        
+        % Needed variables
+        numChan = vWaveSize(2);
+        G_i = G_i(1:numChan);
+        numSmp  = vWaveSize(1);
+        T_total = numSmp/fs;
+        T_step  = 1-T_overlap;
+        
+        
+        numGatingBlocks = floor((T_total-T_gating)/(T_gating*(1-T_overlap)));
+        numReadinBlocks = floor(numGatingBlocks/100);
+        z_ij = zeros(1, numChan);
+        filtstate1 = [];
+        filtstate2 = [];
+        
+        
+        
+        ITUprog('Calulating ITU rating', 1,numGatingBlocks*numChan)
+        ovrllCounter = 1;
+        readinCounter = numReadinBlocks;
+        firstIdxStart    = floor(T_gating*T_step*fs);
+        
+        for kk=1:numGatingBlocks
+            
+            idxStart    = floor(T_gating*readinCounter*T_step*fs);
+            idxStart    = idxStart-firstIdxStart+1;
+            idxEnd      = floor(T_gating*(readinCounter*T_step+1)*fs);
+            idxEnd      = idxEnd-firstIdxStart+1;
+            
+            if readinCounter == numReadinBlocks
+                
+                idxReadinStart    = floor(T_gating*kk*T_step*fs);
+                idxReadinEnd      = floor(T_gating*((kk+numReadinBlocks-1)*T_step+1)*fs);
+                
+                if idxReadinEnd > numSmp
+                    idxReadinEnd = numSmp;
+                end
+                
+                tempReadin = wavread(szFileName, [idxReadinStart idxReadinEnd]);
+                readinCounter = 1;
+            
+            
+            if idxEnd > length(tempReadin)
+                idxEnd = length(tempReadin);
+            end
+            
+            [tempReadin, filtstate1] = filter(bKFilt1, aKFilt1, ...
+                tempReadin, filtstate1);
+            [tempReadin, filtstate2] = filter(bKFilt2, aKFilt2, ...
+                tempReadin, filtstate2);
+            
+            else
+                readinCounter = readinCounter+1;
+            end
+            
+            for cc=1:numChan
+                
+                curBlock = tempReadin(idxStart:idxEnd, cc);
+                z_ij(cc,kk) = mean(curBlock.^2);
+                
+                ITUprog(ovrllCounter);
+                ovrllCounter = ovrllCounter+1;
+                
+            end
+        end
+        
+        %% Calculate j-th block loudness
+        l_j = Prefactor + 10.*log10(sum(G_i* z_ij,1));
+        
+        %% First stage LKFS estimation: absolut thresh from Gamma_a
+        J_g = l_j > Gamma_a;
+        mean_Z_ij = mean(z_ij(:,J_g),2);
+        
+        Gamma_r = Prefactor + 10*log10(sum(G_i*mean_Z_ij)) -Gamma_r_substractor;
+        
+        
+        %% Second stage LKFS estimation: relative thresh from Gamma_r
+        J_g = l_j > Gamma_r;
+        mean_Z_ij = mean(z_ij(:,J_g),2);
+        
+        L_KG = Prefactor + 10*log10(sum(G_i*mean_Z_ij));
+        
+        ITUprog('done')
         
     end
 
