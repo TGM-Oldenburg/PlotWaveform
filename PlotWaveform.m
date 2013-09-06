@@ -147,10 +147,22 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
 %                 supports alpha blending in this state.
 %               * other small bugfixes and improvements.
 %
-%   Ver. 0.91   Fixed the multi-axes behavior. PWF can     09-Mar-2013     JW
+%   Ver. 0.91   Fixed the multi-axes behavior. PWF can     09-Mar-2013      JW
 %               now be placed in axes even with channel
 %               view activated. All channels will be 
 %               plotted in place of the "parent" axes.
+%
+%   Ver. 1.0    Major release! PWF is now extremely fast   06-Sep-2013      JW
+%               in working with huge files, due to a new
+%               approach to block-processing the wavread
+%               itself. 1GB of wave can easily be loaded
+%               in about 15 seconds, while staying low in
+%               memory consumption.
+%               Additional info: future versioning info 
+%               will be placed inside the CHANGELOG.md 
+%               file included in the repo. That way it is 
+%               easier to handle the multiple functions of 
+%               the bundle. Cheers!
 
 %% evaluation of input data
 if nargin == 0, help(mfilename); return; end;
