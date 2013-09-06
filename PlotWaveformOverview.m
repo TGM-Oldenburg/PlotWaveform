@@ -120,7 +120,7 @@ myPostZoomAction = @myPostActionCallback;
     ReadAndComputeMaxData] = PlotWaveform(szFileName, ...
     'ShowXAxisAbove', 1, ...
     'PostZoomAction', ...
-    myPostZoomAction, cParameters);
+    myPostZoomAction, cParameters{:});
 
 % vZoomPosition = [x_1 y_1 x_len y_len]
 
@@ -191,7 +191,7 @@ if bShowOverviewFlag
     set(hRect, 'EdgeColor', 'r')
 end
 
-    function myPostActionCallback(ActualRectPosition)
+    function myPostActionCallback(ActualRectPosition, ~)
         
         vZoomPosition =  [...
             ActualRectPosition(1) ...
