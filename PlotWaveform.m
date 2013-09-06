@@ -1,6 +1,6 @@
 function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
     OrigSampleValuesPos OrigSampleValuesNeg OrigTimeVec numChannels ...
-    myReadAndComputeMaxData DataBlocks FileSize fs] = PlotWaveform(szFileNameOrData, varargin)
+    myReadAndComputeMaxData FileSize fs] = PlotWaveform(szFileNameOrData, varargin)
 %PLOTWAVEFORM   waveform plot
 %   PlotWaveform plots the waveform of a WAVE-file, or vector of WAVE-data
 %   using a block by block mean calculation algorithm. WAVE-data first gets
@@ -185,6 +185,7 @@ bDisableZoomOptions = 0;
 
 %% creating global variables
 bPrintFlag = 0;
+bFirstExecFlag = 2;
 bSampleViewStyleFlag = 0;
 bPlotWithMarkersFlag = 0;
 bShowXAxisAboveFlag = 0;
@@ -203,6 +204,7 @@ vPaperPosition = [];
 OrigSampleValuesNeg = [];
 OrigSampleValuesPos = [];
 OrigTimeVec = [];
+OrigNumSamples = [];
 bOrigPlotBlockwiseFlag = [];
 bOrigAlphaBlendOn = [];
 bOrigPlotWithMarkersFlag = [];
@@ -213,7 +215,7 @@ AxesToUse = [];
 myPostZoomAction = @NOP;
 iZoomMode = 0;
 iVerbose = 0;
-
+progVerb = [];
 
 if ischar(szFileNameOrData)
     [FileSize,fs] = wavread(szFileNameOrData,'size');
@@ -242,7 +244,7 @@ end
 vDefaultPrintResolution = 150;
 set(0,'DefaultFigurePaperPositionMode','manual')
 
-varargin = processInputParameters(varargin);
+varargin = processInputParameters(varargin); %#ok
 
 %% variable arguments read-in
     function cParameters = processInputParameters(cParameters)
@@ -252,62 +254,62 @@ varargin = processInputParameters(varargin);
             if ischar(arg) && strcmpi(arg,'ChannelView')
                 bChannelViewFlag = cParameters{kk + 1};
                 bAlphaBlendFlag = ~bChannelViewFlag;
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ColorsetFace')
                 myColorsetFace = cParameters{kk + 1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ColorsetEdge')
                 myColorsetEdge = cParameters{kk + 1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'Interval')
                 StartEndVal = cParameters{kk + 1};
                 OrigStartEndVal = StartEndVal;
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'PaperPosition')
                 vPaperPosition = cParameters{kk + 1};
                 if  length(vPaperPosition) ~= 4
                     error('PaperPosition needs to be [x y width height]')
                 end
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'PrintResolution')
                 iPrintResolution = cParameters{kk + 1};
                 if  iPrintResolution ~=150||300||600
-                    warning('PrintResolution should be 150, 300 or 600')
+                    warning('PrintResolution should be 150, 300 or 600') %#ok
                 end
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'SilentPrint')
                 bSilentPrintFlag = cParameters{kk + 1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'SampleViewStyle')
                 bSampleViewStyleFlag = cParameters{kk +1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ShowXAxisAbove')
                 bShowXAxisAboveFlag = cParameters{kk +1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'PostZoomAction')
                 myPostZoomAction = cParameters{kk +1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'Verbose')
                 iVerbose = cParameters{kk +1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'ZoomMode')
                 iZoomMode = cParameters{kk +1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
             if ischar(arg) && strcmpi(arg,'Axes')
                 AxesToUse = cParameters{kk +1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
                 % This is not the perfect way to go for Axes definitions. MATLAB
                 % internal functions usually receive Axes handles via the first
                 % input argument before all others (check 'help plot') even
@@ -318,7 +320,7 @@ varargin = processInputParameters(varargin);
             end
             if ischar(arg) && strcmpi(arg,'DisableZoomOptions')
                 bDisableZoomOptions = cParameters{kk +1};
-                valuesToDelete = [valuesToDelete kk:kk+1];
+                valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
         end
         
@@ -368,7 +370,7 @@ ChannelViewSet();
                     pos(3) ...
                     (1/(numChannels)*pos(4))])
                 if channel ~= numChannels
-                    myAxes(channel+1) = axes('Parent', myFigure);
+                    myAxes(channel+1) = axes('Parent', myFigure); %#ok
                 end
             end
         end
@@ -385,9 +387,10 @@ if isempty(get(gcf, 'ResizeFcn'))
 end
 
     function ReadAndComputeMaxData(iManualPlotWidth, NewStartEndVal)
-        if iVerbose
-            tic
-        end
+        
+        
+        if iVerbose; progVerb = make_prog_bar('PlotWaveform verbose'); tic; end
+            
         if ~bReplotOriginalValuesFlag
             set(hParent, 'units', 'Pixel')
             pos = get(hParent, 'position');
@@ -406,11 +409,7 @@ end
             if bAutoAdjustYAxisFlag && length(StartEndVal) > 2
                 StartEndVal(3 : 4) = [];
             end
-
-            if iVerbose
-                fprintf('%d pixel width of plot\n', plotWidth)
-            end
-            
+           
             iFirstSample = ceil(StartEndVal(1)*fs);
             if (iFirstSample <= 0)
                 iFirstSample = 1;
@@ -423,19 +422,14 @@ end
             
             %Getting Num of Samples to be processed
             numSamples = iLastSample-iFirstSample;
-            if iVerbose
-                fprintf('%d samples on input\n', numSamples);
-            end
+           
             
             SampleValuesPos = 0;
             bPlotBlockwiseFlag = 1;
             bPlotWithMarkersFlag = 0;
            
             numSamplesToDisplay = numSamples;
-            if iVerbose
-                fprintf('%d samples on output\n', numSamplesToDisplay)
-            end
-            
+                       
             indBlocks = [iFirstSample iFirstSample+numSamplesToDisplay];
             
             SamplesPerPixel = ceil(numSamples/plotWidth);
@@ -443,30 +437,58 @@ end
             MaxCompLen = SamplesPerPixel;
             
             UnterBlocks = floor(numSamplesToDisplay/MaxCompLen);
-            if iVerbose
-                fprintf('%d subblocks\n', UnterBlocks)
-            end
+      
             
             SampleValuesPos = zeros(UnterBlocks,numChannels);
             SampleValuesNeg = zeros(UnterBlocks,numChannels);
             
-            if bIsWavFileFlag == 1
-                DataBlocks = wavread(szFileNameOrData,indBlocks);
-            else
-                DataBlocks = wavData(indBlocks(1):indBlocks(2),:);
+            if iVerbose;
+                progVerb(sprintf('%d pixels plot width', ...
+                    plotWidth), 'info');                    %#ok
+                progVerb(sprintf('%d samples (input)', ...
+                    numSamples), 'info');                   %#ok
+                progVerb(sprintf('%d samples (output)', ...
+                    numSamplesToDisplay), 'info');          %#ok
+                progVerb(sprintf('%d sublocks', ...
+                    UnterBlocks), 'info');                  %#ok
             end
+
             
             if  numSamplesToDisplay > iPlotBlockwiseThreshold
+                if iVerbose; progVerb(...
+                        'Blockwise read-in', 1, UnterBlocks); end %#ok
+                
                 for mm = 1:UnterBlocks
+                    if iVerbose; progVerb(mm); end %#ok
+                    
+                    if bIsWavFileFlag
+                        curBlock = wavread(szFileNameOrData, ...
+                            [(mm-1)*MaxCompLen+ indBlocks(1) ...
+                              mm   *MaxCompLen+(indBlocks(1)-1)]);
+                    else
+                        curBlock = wavData(...
+                            (mm-1)*MaxCompLen+ indBlocks(1):...
+                             mm   *MaxCompLen+(indBlocks(1)-1),:);
+                    end
+                    
+                    
                     SampleValuesPos(mm,:) = ...
                         (max( ...
-                        (DataBlocks((mm-1)*MaxCompLen+1:mm*MaxCompLen,:))));
+                        curBlock));
                     SampleValuesNeg(mm,:) = ...
                         (min( ...
-                        (DataBlocks((mm-1)*MaxCompLen+1:mm*MaxCompLen,:))));
+                        curBlock));
                 end
             else
-                SampleValuesPos = DataBlocks;
+                if iVerbose; progVerb('Discrete read-in', 1, 2); end %#ok
+
+                if bIsWavFileFlag
+                    SampleValuesPos = wavread(szFileNameOrData,indBlocks);
+                else
+                    SampleValuesPos = wavData(indBlocks(1):indBlocks(2),:);
+                end
+                
+                if iVerbose; progVerb(2); end %#ok
             end
             
             if bAlphaBlendFlag == 1;
@@ -513,14 +535,21 @@ end
                     bOrigPlotBlockwiseFlag = bPlotBlockwiseFlag;
                 end
             end
+        else
+            numSamples = OrigNumSamples;
         end
         plotData;
         
+        
         if iVerbose
             T = toc;
-            fprintf('%f seconds in data\n%f seconds to process.\n', ...
-                numSamples/fs, T)
-        end
+            progVerb(sprintf('%.2f seconds of displayed wave data', numSamples/fs), ...
+                'info'); %#ok
+            progVerb(sprintf('%.2f seconds in total to process.\n', T), ...
+                'info'); %#ok
+
+            progVerb('done'); %#ok
+        end 
     end
 
 myReadAndComputeMaxData = @ReadAndComputeMaxData;
@@ -528,6 +557,9 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
 %% plotting the data
     function plotData()
         if bReplotOriginalValuesFlag
+            if iVerbose; progVerb('Reloading original values', 1, 2); end %#ok
+
+            
             SampleValuesPos = OrigSampleValuesPos;
             SampleValuesNeg = OrigSampleValuesNeg;
 %             timeVec = OrigTimeVec;
@@ -535,7 +567,8 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
             bPlotBlockwiseFlag = bOrigPlotBlockwiseFlag;
             bAlphaBlendOn = bOrigAlphaBlendOn;
             bPlotWithMarkersFlag = bOrigPlotWithMarkersFlag;
-            fprintf('Resetting to original values\n')
+            
+            if iVerbose; progVerb(2); end%#ok
         end
         if isempty(vZoomPosition)
             vZoomPosition =  [ ...
@@ -554,14 +587,21 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
         if isempty(OrigSampleValuesNeg)
         OrigSampleValuesNeg = SampleValuesNeg;
         end 
+        if isempty(OrigNumSamples)
+            OrigNumSamples = numSamples;
+        end
         timeVec = linspace(StartEndVal(1), ...
             StartEndVal(2), ...
             size(SampleValuesPos,1));
         if isempty(OrigTimeVec)
             OrigTimeVec = timeVec;
         end
+        
+        if iVerbose; progVerb('Channel-wise displayal', 1, numChannels);end %#ok
 
         for channel=1:numChannels
+            if iVerbose; progVerb(channel); end %#ok
+            
             if bChannelViewFlag == 1
                 hParent = myAxes(channel);
             end
@@ -876,9 +916,11 @@ end
     end
 
     function ResizeFcn(~,~)
-        if bPrintFlag == 0
+        if ~bPrintFlag && ~bFirstExecFlag
             ReadAndComputeMaxData();
         end
+        
+        bFirstExecFlag = bFirstExecFlag-1;
 
     end
 
