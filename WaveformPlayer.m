@@ -184,6 +184,11 @@ else
     bPlaybackSupportFlag = 1;
 end
 
+[~,szReleaseDate]   = version;
+nReleaseDate        = datenum(szReleaseDate);
+nAudioreadAvailable = 735123;
+bUseAudioread = nReleaseDate >= nAudioreadAvailable;
+
 %% Set global visuals
 vUpperAxesPos       = [ 0.05    0.45    0.90    0.50];
 vOverviewAxesPos    = [ 0.05    0.23    0.90    0.15];
@@ -219,7 +224,7 @@ auxSize             = [ 400 300];
 
 %% Set global settings
 szSaveFileTitle = 'WaveformPlayer.ini';
-iBlockLen       = 1024*8;
+iBlockLen       = 1024;
 iWinMin         = 256;
 iWinDef         = 2048;
 iWinMax         = 8192;
@@ -372,7 +377,6 @@ set(hAxes, ...
 
 
 myPostZoomAction = @myPostActionCallback;
-
 stFuncHandles.NewZoomPosition = myPostZoomAction;
 
 if ispc
@@ -405,6 +409,13 @@ end
 vStartEndVal = [...
     vZoomPosition(1) vZoomPosition(1)+vZoomPosition(3) ...
     vZoomPosition(2) vZoomPosition(2)+vZoomPosition(4)];
+
+
+
+    function ResetZoomWrapper
+        ReadAndComputeMaxData([],[],1);
+    end
+
 
 % vSampleValues = OrigSampleValuesPos;
 
@@ -452,10 +463,16 @@ init();
                     blockEnd = nBlockIdx*nBlockSize;
                 end
                 
-                curBlock = wavread(szFileName, ...
-                    [(nBlockIdx-1)*nBlockSize+1 ...
-                    blockEnd]);
-                
+                if bUseAudioread
+                    curBlock = audioread(szFileName, ...
+                        [(nBlockIdx-1)*nBlockSize+1 ...
+                        blockEnd]);
+                else
+                    
+                    curBlock = wavread(szFileName, ...
+                        [(nBlockIdx-1)*nBlockSize+1 ...
+                        blockEnd]);
+                end
                 for chanIdx=1:vWaveSize(2)
                     
                     specProg(count);
@@ -614,7 +631,7 @@ init();
         else
             try guiBackgroundColor = get(hFigure, ...
                 'Color');
-            catch %#ok
+            catch
                 try guiBackgroundColor = get(hFigure, ...
                 'BackgroundColor');
                 catch error
@@ -705,8 +722,8 @@ init();
         vButtonSize = [0.1 0.6];
         
         %% Build the UI
-        try set(hFigure, 'CloseRequestFcn', @Destructor) %#ok
-        end
+%         try set(hFigure, 'CloseRequestFcn', @Destructor) %#ok
+%         end
         
         handles.hPlayer = uipanel(...
             'Parent', hFigure, ...
@@ -1428,7 +1445,11 @@ init();
             if iRedrawCounter == iUpdateInterval
                 iRedrawCounter = 0;
                 
-                CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+                if bPlaySelectionFlag
+                    CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+                else
+                    CurrentPos   = PlayIdx/fs;
+                end
                 szCurrentPos = sprintf('%8.3f s',CurrentPos);
                 
                 set(handles.hValueCurrentPos, ...
@@ -1460,10 +1481,14 @@ init();
                 
                 % For left over samples: generate ZeroPadded block
                 OutZP = zeros(iBlockLen, numChannels);
-
-                curBlock = wavread(szFileName, ...
-                    [curStartIdx vPlayStartEnd(2)]);
                 
+                if bUseAudioread
+                     curBlock = audioread(szFileName, ...
+                        [curStartIdx vPlayStartEnd(2)]);
+                else
+                curBlock = wavread(szFileName, ...
+                    [curStartIdx vPlayStartEnd(2)]); %#ok
+                end
                 OutZP(1:length(curBlock),:) = curBlock;
                 
                 % Output
@@ -1488,10 +1513,15 @@ init();
                 
                 if bPlaybackSupportFlag
                     
-                    curBlock = wavread(szFileName, ...
-                        [curStartIdx ...
-                         curStartIdx+iBlockLen-1]);
-                    
+                    if bUseAudioread
+                        curBlock = audioread(szFileName, ...
+                            [curStartIdx ...
+                            curStartIdx+iBlockLen-1]);
+                    else
+                        curBlock = wavread(szFileName, ...
+                            [curStartIdx ...
+                            curStartIdx+iBlockLen-1]); %#ok
+                    end
                     OutZPComplete = RoutingAndMuting(curBlock);
                     
                     msound('putsamples', ...
@@ -1576,7 +1606,7 @@ init();
             
             
             
-            FrmBeg  = floor(vZoomPosition(1)*fs);
+            FrmBeg  = max([floor(vZoomPosition(1)*fs) 1]);
             FrmEnd  = floor((vZoomPosition(1)+vZoomPosition(3))*fs);
             
             vPlayStartEnd = [FrmBeg FrmEnd];
@@ -1593,9 +1623,12 @@ init();
        set(handles.hPBPlay, 'Enable', 'off')
        set(handles.hPBPause,'Enable', 'on')
        set(handles.hPBStop, 'Enable', 'on')
-
        
-       CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+       if bPlaySelectionFlag
+           CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+       else
+           CurrentPos   = PlayIdx/fs;
+       end
        szCurrentPos = sprintf('%8.3f',CurrentPos);
        
        set(handles.hValueCurrentPos, ...
@@ -1717,21 +1750,15 @@ init();
     function myPostActionCallback(ActualRectPosition, ~)
     
     if ActualRectPosition(1) >= OrigStartEndVal(2)
-        warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(1) is out of bounds. Will be fitted.');
         ActualRectPosition(1) = OrigStartEndVal(2)-0.001;
     end
     if ActualRectPosition(2) > OrigStartEndVal(2)
-        warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(2) is out of bounds. Will be fitted.');
         ActualRectPosition(2) = OrigStartEndVal(2);
     end
     if ActualRectPosition(1) < OrigStartEndVal(1)
         ActualRectPosition(1) = OrigStartEndVal(1);
     end
     if ActualRectPosition(2) < OrigStartEndVal(1)
-        warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(2) is out of bounds. Will be fitted.');
         ActualRectPosition(2) = OrigStartEndVal(1)+0.001;
     end
     
@@ -1777,11 +1804,10 @@ init();
             set(hRect, 'EdgeColor', 'w')
         end
         
-        switch bWaveDisplayType
-            case 1
-                ReadAndComputeMaxData(1, vStartEndVal);
-            case 2
-                CalculateSpectrogram;
+        if bWaveDisplayType == 2
+            CalculateSpectrogram;
+        elseif bWaveDisplayType == 1 && numel(ActualRectPosition) == 2
+            ReadAndComputeMaxData(1, vStartEndVal);
         end
         
         if ~isempty(myPostZoomReturnStartEnd)
@@ -1849,21 +1875,21 @@ init();
 %% Destructor function
     function Destructor(~,~)
        
-        % Close down audio
-        if bPlaybackSupportFlag
-            msound('close')
-        end
-        
-                guiSize = get(gcf, 'Position');
-
-        
-        % Close figure by deleting its handle
-        delete(gcf)
-        
-        
-        
-        save(szSaveFile, 'globset*', 'gui*', '-mat')
-        
+%         % Close down audio
+%         if bPlaybackSupportFlag
+%             msound('close')
+%         end
+%         
+%                 guiSize = get(gcf, 'Position');
+% 
+%         
+%         % Close figure by deleting its handle
+%         delete(gcf)
+%         
+%         
+%         
+%         save(szSaveFile, 'globset*', 'gui*', '-mat')
+%         
     end
 
 %% Calculate ITU loudness rating BS1770-3
