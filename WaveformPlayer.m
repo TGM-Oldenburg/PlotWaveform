@@ -1771,7 +1771,7 @@ init();
             
             vStartEndVal(1:2) = ActualRectPosition(1:2);
 
-            
+            bActualIsOrig = sum(ActualRectPosition == OrigStartEndVal(1:2));
         case 4
             
             vZoomPosition =  [...
@@ -1782,6 +1782,8 @@ init();
             
             vStartEndVal = ActualRectPosition;
             
+            
+            bActualIsOrig = sum(ActualRectPosition == OrigStartEndVal);
         otherwise
             error('ActualRectPosition has to be 2 or 4 element vector')
     end
@@ -1790,7 +1792,7 @@ init();
         axis(hOverviewAxes,OrigStartEndVal);
                 
         iZoomWidth = vZoomPosition(3);
-        if sum(vZoomPosition ~= OrigStartEndVal) > 0
+        if bActualIsOrig == 0
             set(hSliderHori,'Enable', 'on', ...
                 'Min',OrigStartEndVal(1)+iZoomWidth/2, ...
                 'Max',OrigStartEndVal(2)-iZoomWidth/2, ...
