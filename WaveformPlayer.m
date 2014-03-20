@@ -279,8 +279,6 @@ hWavePos        = [];
 hDataToggle     = [];
 hSpectrograms   = [];
 hParentFig      = [];
-hLoudnessPanel  = [];
-hToolsPanel     = [];
 
 myPostZoomReturnStartEnd    = [];
 myPostSlideAction           = [];
@@ -376,9 +374,10 @@ set(hAxes, ...
     'Position', vUpperAxesPos)
 
 
-myPostZoomAction = @myPostActionCallback;
+myPostZoomAction    = @myPostActionCallback;
+myZoomResetFunction = @ResetZoomWrapper;
 stFuncHandles.NewZoomPosition = myPostZoomAction;
-
+stFuncHandles.ResetZoom       = myZoomResetFunction;
 if ispc
     guiFontSize        = 8;           % in pixels (default, Win)
 else
@@ -412,9 +411,6 @@ vStartEndVal = [...
 
 
 
-    function ResetZoomWrapper
-        ReadAndComputeMaxData([],[],1);
-    end
 
 
 % vSampleValues = OrigSampleValuesPos;
@@ -422,8 +418,6 @@ vStartEndVal = [...
 bMuteChannels = zeros(1, numChannels);
 
 init();
-
-% PlotWaveform/SetOriginalZoom;
 
 %--------------------------------------------------------------------------
 % SUBFUNCTIONS
@@ -468,10 +462,9 @@ init();
                         [(nBlockIdx-1)*nBlockSize+1 ...
                         blockEnd]);
                 else
-                    
                     curBlock = wavread(szFileName, ...
                         [(nBlockIdx-1)*nBlockSize+1 ...
-                        blockEnd]);
+                        blockEnd]); %#ok
                 end
                 for chanIdx=1:vWaveSize(2)
                     
@@ -1276,17 +1269,6 @@ init();
     end
 
 
-
-
-
-%% Callback for user changing mute state
-    function MuteChannel(~, ~, ~)
-        
-        checkValue = get(handles.hCheckChanMute(:), 'Value');
-        bMuteChannels = cell2mat(checkValue)';
-        
-    end
-
 %% Switch the type of display (waveform / spectrogram)
     function SwitchWaveDisplay(~, event)
         
@@ -1752,6 +1734,12 @@ init();
            myPostSlideAction(vStartEndVal); %#ok
         end
         
+    end
+
+
+%% Function causing reset of the zoom (to be used externally)
+    function ResetZoomWrapper
+        ReadAndComputeMaxData([],[],1);
     end
 
 end
