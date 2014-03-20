@@ -184,6 +184,11 @@ else
     bPlaybackSupportFlag = 1;
 end
 
+[~,szReleaseDate]   = version;
+nReleaseDate        = datenum(szReleaseDate);
+nAudioreadAvailable = 735123;
+bUseAudioread = nReleaseDate >= nAudioreadAvailable;
+
 %% Set global visuals
 vUpperAxesPos       = [ 0.05    0.45    0.90    0.50];
 vOverviewAxesPos    = [ 0.05    0.23    0.90    0.15];
@@ -219,7 +224,7 @@ auxSize             = [ 400 300];
 
 %% Set global settings
 szSaveFileTitle = 'WaveformPlayer.ini';
-iBlockLen       = 1024*8;
+iBlockLen       = 1024;
 iWinMin         = 256;
 iWinDef         = 2048;
 iWinMax         = 8192;
@@ -274,8 +279,6 @@ hWavePos        = [];
 hDataToggle     = [];
 hSpectrograms   = [];
 hParentFig      = [];
-hLoudnessPanel  = [];
-hToolsPanel     = [];
 
 myPostZoomReturnStartEnd    = [];
 myPostSlideAction           = [];
@@ -371,10 +374,10 @@ set(hAxes, ...
     'Position', vUpperAxesPos)
 
 
-myPostZoomAction = @myPostActionCallback;
-
+myPostZoomAction    = @myPostActionCallback;
+myZoomResetFunction = @ResetZoomWrapper;
 stFuncHandles.NewZoomPosition = myPostZoomAction;
-
+stFuncHandles.ResetZoom       = myZoomResetFunction;
 if ispc
     guiFontSize        = 8;           % in pixels (default, Win)
 else
@@ -406,13 +409,15 @@ vStartEndVal = [...
     vZoomPosition(1) vZoomPosition(1)+vZoomPosition(3) ...
     vZoomPosition(2) vZoomPosition(2)+vZoomPosition(4)];
 
+
+
+
+
 % vSampleValues = OrigSampleValuesPos;
 
 bMuteChannels = zeros(1, numChannels);
 
 init();
-
-% PlotWaveform/SetOriginalZoom;
 
 %--------------------------------------------------------------------------
 % SUBFUNCTIONS
@@ -452,10 +457,15 @@ init();
                     blockEnd = nBlockIdx*nBlockSize;
                 end
                 
-                curBlock = wavread(szFileName, ...
-                    [(nBlockIdx-1)*nBlockSize+1 ...
-                    blockEnd]);
-                
+                if bUseAudioread
+                    curBlock = audioread(szFileName, ...
+                        [(nBlockIdx-1)*nBlockSize+1 ...
+                        blockEnd]);
+                else
+                    curBlock = wavread(szFileName, ...
+                        [(nBlockIdx-1)*nBlockSize+1 ...
+                        blockEnd]); %#ok
+                end
                 for chanIdx=1:vWaveSize(2)
                     
                     specProg(count);
@@ -602,8 +612,6 @@ init();
         
         if isempty(hParentFig)
             
-%             hFigure = figure;
-%             hParentFig = hFigure;
             set(hFigure, ...
                 'Position', guiSize, ...
                 'Color', guiBackgroundColor)
@@ -614,7 +622,7 @@ init();
         else
             try guiBackgroundColor = get(hFigure, ...
                 'Color');
-            catch %#ok
+            catch
                 try guiBackgroundColor = get(hFigure, ...
                 'BackgroundColor');
                 catch error
@@ -651,11 +659,12 @@ init();
         set(hOverviewAxes, 'units', 'normalized')
         set(hOverviewAxes, 'Position', vOverviewAxesPos);
         for channel=1:numChannels
-            hWaveView = fill([OrigTime_vek OrigTime_vek(end:-1:1)], ...
+            fill([OrigTime_vek OrigTime_vek(end:-1:1)], ...
                 [OrigSampleValuesPos(:,channel); ...
                 flipud(OrigSampleValuesNeg(:,channel))],'b', ...
-                'Parent', hOverviewAxes);
-            set(hWaveView,'FaceAlpha',0.5, 'EdgeAlpha',0.6, ...
+                'Parent', hOverviewAxes, ...
+                'FaceAlpha',0.5, ...
+                'EdgeAlpha',0.6, ...
                 'FaceColor',myColorsetFace(mod ...
                 (channel-1, size(myColorsetFace,1))+1,:), ...
                 'EdgeColor',myColorsetEdge(mod ...
@@ -670,13 +679,11 @@ init();
         if isempty(hRect)
             hRect = rectangle('Parent', hOverviewAxes);
         end
-        set(hRect, 'Position', vZoomPosition);
-        % set(hRect, 'FaceColor', [0.9 0.9 1])
-        % set(hRect, 'EdgeColor', 'r')
-        
+        set(hRect, 'Position', vZoomPosition);        
         set(hRect, 'FaceColor', 'w')
         set(hRect, 'EdgeColor', 'k')
         
+        % Add some axes styling
         set(hOverviewAxes, ...
             'Color', 'w', ...
             'Box', 'off', ...
@@ -705,9 +712,6 @@ init();
         vButtonSize = [0.1 0.6];
         
         %% Build the UI
-        try set(hFigure, 'CloseRequestFcn', @Destructor) %#ok
-        end
-        
         handles.hPlayer = uipanel(...
             'Parent', hFigure, ...
             'Units', 'normalized', ...
@@ -747,7 +751,7 @@ init();
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
             'Position', [0.04+(0.02+vButtonSize(1))*3 ...
-            0.55 0.15 0.3], ...
+            0.55 0.14 0.3], ...
             'BackgroundColor', guiBackgroundColor-0, ...
             'String', 'Loop', ...
             'FontSize', guiFontSize, ...
@@ -758,7 +762,7 @@ init();
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
             'Position', [0.04+(0.02+vButtonSize(1))*3 ...
-            0.15 0.4 0.3], ...
+            0.15 0.14 0.3], ...
             'BackgroundColor', guiBackgroundColor, ...
             'String', 'Selection', ...
             'FontSize', guiFontSize, ...
@@ -770,8 +774,8 @@ init();
             'Style', 'text', ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
-            'Position', [0.09+(0.02+vButtonSize(1))*4 ...
-            0.54 0.07 0.27], ...
+            'Position', [0.08+(0.02+vButtonSize(1))*4 ...
+            0.54 0.06 0.27], ...
             'BackgroundColor', guiBackgroundColor-0, ...
             'String', 'Start:', ...
             'FontSize', guiFontSize, ...
@@ -781,8 +785,8 @@ init();
             'Style', 'text', ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
-            'Position', [0.09+(0.02+vButtonSize(1))*4 ...
-            0.1 0.07 0.27], ...
+            'Position', [0.08+(0.02+vButtonSize(1))*4 ...
+            0.1 0.06 0.27], ...
             'BackgroundColor', guiBackgroundColor-0, ...
             'String', 'End:', ...
             'FontSize', guiFontSize, ...
@@ -792,10 +796,10 @@ init();
             'Style', 'text', ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
-            'Position', [0.09+(0.02+vButtonSize(1))*4 ...
-            0.39 0.07 0.20], ...
+            'Position', [0.08+(0.02+vButtonSize(1))*4 ...
+            0.39 0.06 0.20], ...
             'BackgroundColor', guiBackgroundColor-0, ...
-            'String', 'Current:', ...
+            'String', 'Pos:', ...
             'FontSize', guiFontSize, ...
             'HorizontalAlign', 'left')   
         
@@ -812,34 +816,34 @@ init();
             'Style', 'text', ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
-            'Position', [0.05+(0.02+vButtonSize(1))*5 ...
-            0.54 0.12 0.27], ...
+            'Position', [0.04+(0.02+vButtonSize(1))*5 ...
+            0.54 0.118 0.27], ...
             'BackgroundColor', guiBackgroundColor-0, ...
             'String', szSelectionStart, ...
             'FontSize', guiFontSize, ...
-            'HorizontalAlign', 'left');
+            'HorizontalAlign', 'right');
         
         handles.hValueSelectionEnd = uicontrol(...
             'Style', 'text', ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
-            'Position', [0.05+(0.02+vButtonSize(1))*5 ...
-            0.095 0.12 0.27], ...
+            'Position', [0.04+(0.02+vButtonSize(1))*5 ...
+            0.095 0.118 0.27], ...
             'BackgroundColor', guiBackgroundColor-0, ...
             'String', szSelectionEnd, ...
             'FontSize', guiFontSize, ...
-            'HorizontalAlign', 'left');
+            'HorizontalAlign', 'right');
         
          handles.hValueCurrentPos = uicontrol(...
             'Style', 'text', ...
             'Parent', handles.hPlayer, ...
             'Units', 'normalized', ...
-            'Position', [0.05+(0.02+vButtonSize(1))*5 ...
-            0.39 0.12 0.20], ...
+            'Position', [0.04+(0.02+vButtonSize(1))*5 ...
+            0.39 0.118 0.20], ...
             'BackgroundColor', guiBackgroundColor-0, ...
             'String', szCurrentPos, ...
             'FontSize', guiFontSize, ...
-            'HorizontalAlign', 'left');
+            'HorizontalAlign', 'right');
         
         %% Radio buttons for Waveform or Spectrogram        
         hDataToggle = uibuttongroup( ...
@@ -857,6 +861,7 @@ init();
             'Position', [0.05 0.55 0.9 0.4], ...
             'HandleVisibility', 'off', ...
             'String', 'Waveform', ...
+            'BackgroundColor', guiBackgroundColor-0, ...
             'Tag', '1');
         
         uicontrol(...
@@ -866,6 +871,7 @@ init();
             'Position', [0.05 0.05 0.9 0.4], ...
             'HandleVisibility', 'off', ...
             'String', 'Spectrogram', ...
+            'BackgroundColor', guiBackgroundColor-0, ...
             'Tag', '2');
 %         
 %         set(hDataToggle, ...
@@ -1263,130 +1269,6 @@ init();
     end
 
 
-%% Callback for user changing the tool visibility
-    function showTools(~,~,~)
-        
-        handlesToChange = [handles.hPlayer, ...
-            hOverviewAxes, ...
-            hWaveAxes(:)', ...
-            hSliderHori];
-        
-        
-        for nn=1:numel(handlesToChange)
-            curHandlePos = get(handlesToChange(nn), 'Position');
-            
-            
-            set(handlesToChange(nn), ...
-                'Position', [...
-                curHandlePos(1:2) ...
-                curHandlePos(3)-ToolsWidth ...
-                curHandlePos(4)]);
-            
-        end
-        
-        ToolsWidth = ToolsWidth*(-1);
-        bToolsFlag = bToolsFlag*(-1);
-        
-        if bToolsFlag == -1
-            set(handles.hMenubarTools(2), 'Checked', 'off');
-            if ~isempty(hLoudnessPanel)
-                set(hToolsPanel, 'Visible', 'off')
-            end
-        else
-            set(handles.hMenubarTools(2), 'Checked', 'on');
-            if ~isempty(hLoudnessPanel)
-                set(hToolsPanel, 'Visible', 'on')
-            end
-        end
-        
-        if isempty(hLoudnessPanel)
-            
-            calculateOverallLoudness_ITU();
-            
-            hToolsPanel = uipanel(...
-                'Parent', hFigure, ...
-                'Units', 'normalized', ...
-                'Position', [0.97-abs(ToolsWidth) 0.05 abs(ToolsWidth) 0.9], ...
-                'BackgroundColor', guiBackgroundColor);
-            
-            hLoudnessPanel = uipanel(...
-                'Parent', hToolsPanel, ...
-                'Units', 'normalized', ...
-                'Position', [0.05 0.05 0.9 0.25], ...
-                'BackgroundColor', guiBackgroundColor, ...
-                'Title', 'Overall Loudness');
-            
-            
-            
-            uicontrol('style', 'text', ...
-                'parent', hLoudnessPanel, ...
-                'String', 'EBU-R 128-2011:', ...
-                'BackgroundColor', guiBackgroundColor-0, ...
-                'FontSize', guiFontSize, ...
-                'Units', 'normalized', ...
-                'Position', [0.05 0.65 0.9 0.2]);
-            
-            uicontrol('style', 'text', ...
-                'parent', hLoudnessPanel, ...
-                'String', sprintf('%.2f LUFS', L_KG), ...
-                'BackgroundColor', guiBackgroundColor-0, ...
-                'FontSize', guiFontSize+1, ...
-                'Units', 'normalized', ...
-                'Position', [0.05 0.50 0.9 0.2]);
-            
-            
-            
-            uicontrol('style', 'text', ...
-                'parent', hLoudnessPanel, ...
-                'String', 'ITU-R BS.1770-3:', ...
-                'BackgroundColor', guiBackgroundColor-0, ...
-                'FontSize', guiFontSize, ...
-                'Units', 'normalized', ...
-                'Position', [0.05 0.2 0.9 0.2]);
-            
-            uicontrol('style', 'text', ...
-                'parent', hLoudnessPanel, ...
-                'String', sprintf('%.2f LKFS', L_KG), ...
-                'BackgroundColor', guiBackgroundColor-0, ...
-                'FontSize', guiFontSize+1, ...
-                'Units', 'normalized', ...
-                'Position', [0.05 0.05 0.9 0.2]);
-            
-            
-            
-            %% Checkmarks for channel muting
-            for channel=1:numel(hWaveAxes)
-                hWaveAxesPos = get(hWaveAxes(channel), 'Position');
-                
-                ChanMuteXPos = hWaveAxesPos(1)+hWaveAxesPos(3)+0.005;
-                
-                handles.hCheckChanMute(channel) = uicontrol(...
-                    'Style', 'checkbox', ...
-                    'Parent', hToolsPanel, ...
-                    'Units', 'normalized', ...
-                    'Position', [0.05 hWaveAxesPos(2) ...
-                    1-ChanMuteXPos-0.001 hWaveAxesPos(4)], ...
-                    'BackgroundColor', guiBackgroundColor-0, ...
-                    'String', '', ...
-                    'FontSize', guiFontSize, ...
-                    'Value', bMuteChannels(channel), ...
-                    'Callback', @MuteChannel);
-            end
-            
-        end
-        
-    end
-
-
-%% Callback for user changing mute state
-    function MuteChannel(~, ~, ~)
-        
-        checkValue = get(handles.hCheckChanMute(:), 'Value');
-        bMuteChannels = cell2mat(checkValue)';
-        
-    end
-
-
 %% Switch the type of display (waveform / spectrogram)
     function SwitchWaveDisplay(~, event)
         
@@ -1428,7 +1310,11 @@ init();
             if iRedrawCounter == iUpdateInterval
                 iRedrawCounter = 0;
                 
-                CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+                if bPlaySelectionFlag
+                    CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+                else
+                    CurrentPos   = PlayIdx/fs;
+                end
                 szCurrentPos = sprintf('%8.3f s',CurrentPos);
                 
                 set(handles.hValueCurrentPos, ...
@@ -1460,10 +1346,14 @@ init();
                 
                 % For left over samples: generate ZeroPadded block
                 OutZP = zeros(iBlockLen, numChannels);
-
-                curBlock = wavread(szFileName, ...
-                    [curStartIdx vPlayStartEnd(2)]);
                 
+                if bUseAudioread
+                     curBlock = audioread(szFileName, ...
+                        [curStartIdx vPlayStartEnd(2)]);
+                else
+                curBlock = wavread(szFileName, ...
+                    [curStartIdx vPlayStartEnd(2)]); %#ok
+                end
                 OutZP(1:length(curBlock),:) = curBlock;
                 
                 % Output
@@ -1488,10 +1378,15 @@ init();
                 
                 if bPlaybackSupportFlag
                     
-                    curBlock = wavread(szFileName, ...
-                        [curStartIdx ...
-                         curStartIdx+iBlockLen-1]);
-                    
+                    if bUseAudioread
+                        curBlock = audioread(szFileName, ...
+                            [curStartIdx ...
+                            curStartIdx+iBlockLen-1]);
+                    else
+                        curBlock = wavread(szFileName, ...
+                            [curStartIdx ...
+                            curStartIdx+iBlockLen-1]); %#ok
+                    end
                     OutZPComplete = RoutingAndMuting(curBlock);
                     
                     msound('putsamples', ...
@@ -1576,7 +1471,7 @@ init();
             
             
             
-            FrmBeg  = floor(vZoomPosition(1)*fs);
+            FrmBeg  = max([floor(vZoomPosition(1)*fs) 1]);
             FrmEnd  = floor((vZoomPosition(1)+vZoomPosition(3))*fs);
             
             vPlayStartEnd = [FrmBeg FrmEnd];
@@ -1593,9 +1488,12 @@ init();
        set(handles.hPBPlay, 'Enable', 'off')
        set(handles.hPBPause,'Enable', 'on')
        set(handles.hPBStop, 'Enable', 'on')
-
        
-       CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+       if bPlaySelectionFlag
+           CurrentPos   = (vZoomPosition(1)*fs+PlayIdx)/fs;
+       else
+           CurrentPos   = PlayIdx/fs;
+       end
        szCurrentPos = sprintf('%8.3f',CurrentPos);
        
        set(handles.hValueCurrentPos, ...
@@ -1623,23 +1521,6 @@ init();
        whilePlaying();
        
     end
-
-    function createWavePosLine
-        
-        for nn=1:numel(hWaveAxes)
-            
-            hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 fs/2], ...
-                'Parent', hWaveAxes(nn), ...
-                'Color', [000/255 000/255 000/255], ...
-                'XData', [CurrentPos CurrentPos], ...
-                'LineWidth', 1.5);
-            
-            
-        end
-        
-    end
-
-
 
 %% Callback on user hit: stop
     function CallbackStop(~,~)
@@ -1699,6 +1580,20 @@ init();
 
     end
 
+%% Function to plot new positioning lines in all axes
+    function createWavePosLine
+        
+        for nn=1:numel(hWaveAxes)
+            
+            hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 fs/2], ...
+                'Parent', hWaveAxes(nn), ...
+                'Color', [000/255 000/255 000/255], ...
+                'XData', [CurrentPos CurrentPos], ...
+                'LineWidth', 1.5); 
+        end
+    end
+
+%% Function to gather the number of output devices
     function getNumberOfOutputs(devID)
         
         if devID == 0
@@ -1717,21 +1612,15 @@ init();
     function myPostActionCallback(ActualRectPosition, ~)
     
     if ActualRectPosition(1) >= OrigStartEndVal(2)
-        warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(1) is out of bounds. Will be fitted.');
         ActualRectPosition(1) = OrigStartEndVal(2)-0.001;
     end
     if ActualRectPosition(2) > OrigStartEndVal(2)
-        warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(2) is out of bounds. Will be fitted.');
         ActualRectPosition(2) = OrigStartEndVal(2);
     end
     if ActualRectPosition(1) < OrigStartEndVal(1)
         ActualRectPosition(1) = OrigStartEndVal(1);
     end
     if ActualRectPosition(2) < OrigStartEndVal(1)
-        warning('WFP:OutOfBounds', ...
-            'ActualRectPosition(2) is out of bounds. Will be fitted.');
         ActualRectPosition(2) = OrigStartEndVal(1)+0.001;
     end
     
@@ -1744,7 +1633,7 @@ init();
             
             vStartEndVal(1:2) = ActualRectPosition(1:2);
 
-            
+            bActualIsOrig = sum(ActualRectPosition == OrigStartEndVal(1:2));
         case 4
             
             vZoomPosition =  [...
@@ -1755,6 +1644,8 @@ init();
             
             vStartEndVal = ActualRectPosition;
             
+            
+            bActualIsOrig = sum(ActualRectPosition == OrigStartEndVal);
         otherwise
             error('ActualRectPosition has to be 2 or 4 element vector')
     end
@@ -1763,7 +1654,7 @@ init();
         axis(hOverviewAxes,OrigStartEndVal);
                 
         iZoomWidth = vZoomPosition(3);
-        if sum(vZoomPosition ~= OrigStartEndVal) > 0
+        if bActualIsOrig == 0
             set(hSliderHori,'Enable', 'on', ...
                 'Min',OrigStartEndVal(1)+iZoomWidth/2, ...
                 'Max',OrigStartEndVal(2)-iZoomWidth/2, ...
@@ -1777,11 +1668,10 @@ init();
             set(hRect, 'EdgeColor', 'w')
         end
         
-        switch bWaveDisplayType
-            case 1
-                ReadAndComputeMaxData(1, vStartEndVal);
-            case 2
-                CalculateSpectrogram;
+        if bWaveDisplayType == 2
+            CalculateSpectrogram;
+        elseif bWaveDisplayType == 1 && numel(ActualRectPosition) == 2
+            ReadAndComputeMaxData(1, vStartEndVal);
         end
         
         if ~isempty(myPostZoomReturnStartEnd)
@@ -1846,132 +1736,10 @@ init();
         
     end
 
-%% Destructor function
-    function Destructor(~,~)
-       
-        % Close down audio
-        if bPlaybackSupportFlag
-            msound('close')
-        end
-        
-                guiSize = get(gcf, 'Position');
 
-        
-        % Close figure by deleting its handle
-        delete(gcf)
-        
-        
-        
-        save(szSaveFile, 'globset*', 'gui*', '-mat')
-        
-    end
-
-%% Calculate ITU loudness rating BS1770-3
-    function calculateOverallLoudness_ITU
-        
-        ITUprog = make_prog_bar('ITU Loudness rating');
-        
-        T_gating = 0.400; %seconds
-        T_overlap = 0.75; %percent
-        
-        Gamma_a = -70;
-        Gamma_r_substractor = 10;
-        Prefactor = -0.691;
-        
-        % Filter coefficients for K stages 1 and 2
-        bKFilt1 = [1.53512485958697,    -2.69169618940638,  1.19839281085285];
-        aKFilt1 = [1,                   -1.69065929318241,  0.73248077421585];
-        
-        bKFilt2 = [1.0,                 -2.0,               1.0             ];
-        aKFilt2 = [1.0,                 -1.99004745483398,  0.99007225036621];
-        
-        % Channel weightings for multichannel audio (L-C-R-Ls-Rs)
-        G_i = [1.0, 1.0, 1.0, 1.41, 1.41];
-        
-        
-        % Needed variables
-        numChan = vWaveSize(2);
-        G_i = G_i(1:numChan);
-        numSmp  = vWaveSize(1);
-        T_total = numSmp/fs;
-        T_step  = 1-T_overlap;
-        
-        
-        numGatingBlocks = floor((T_total-T_gating)/(T_gating*(1-T_overlap)));
-        numReadinBlocks = floor(numGatingBlocks/100);
-        z_ij = zeros(1, numChan);
-        filtstate1 = [];
-        filtstate2 = [];
-        
-        
-        
-        ITUprog('Calulating ITU rating', 1,numGatingBlocks*numChan)
-        ovrllCounter = 1;
-        readinCounter = numReadinBlocks;
-        firstIdxStart    = floor(T_gating*T_step*fs);
-        
-        for kk=1:numGatingBlocks
-            
-            idxStart    = floor(T_gating*readinCounter*T_step*fs);
-            idxStart    = idxStart-firstIdxStart+1;
-            idxEnd      = floor(T_gating*(readinCounter*T_step+1)*fs);
-            idxEnd      = idxEnd-firstIdxStart+1;
-            
-            if readinCounter == numReadinBlocks
-                
-                idxReadinStart    = floor(T_gating*kk*T_step*fs);
-                idxReadinEnd      = floor(T_gating*((kk+numReadinBlocks-1)*T_step+1)*fs);
-                
-                if idxReadinEnd > numSmp
-                    idxReadinEnd = numSmp;
-                end
-                
-                tempReadin = wavread(szFileName, [idxReadinStart idxReadinEnd]);
-                readinCounter = 1;
-            
-            
-            if idxEnd > length(tempReadin)
-                idxEnd = length(tempReadin);
-            end
-            
-            [tempReadin, filtstate1] = filter(bKFilt1, aKFilt1, ...
-                tempReadin, filtstate1);
-            [tempReadin, filtstate2] = filter(bKFilt2, aKFilt2, ...
-                tempReadin, filtstate2);
-            
-            else
-                readinCounter = readinCounter+1;
-            end
-            
-            for cc=1:numChan
-                
-                curBlock = tempReadin(idxStart:idxEnd, cc);
-                z_ij(cc,kk) = mean(curBlock.^2);
-                
-                ITUprog(ovrllCounter);
-                ovrllCounter = ovrllCounter+1;
-                
-            end
-        end
-        
-        %% Calculate j-th block loudness
-        l_j = Prefactor + 10.*log10(sum(G_i* z_ij,1));
-        
-        %% First stage LKFS estimation: absolut thresh from Gamma_a
-        J_g = l_j > Gamma_a;
-        mean_Z_ij = mean(z_ij(:,J_g),2);
-        
-        Gamma_r = Prefactor + 10*log10(sum(G_i*mean_Z_ij)) -Gamma_r_substractor;
-        
-        
-        %% Second stage LKFS estimation: relative thresh from Gamma_r
-        J_g = l_j > Gamma_r;
-        mean_Z_ij = mean(z_ij(:,J_g),2);
-        
-        L_KG = Prefactor + 10*log10(sum(G_i*mean_Z_ij));
-        
-        ITUprog('done')
-        
+%% Function causing reset of the zoom (to be used externally)
+    function ResetZoomWrapper
+        ReadAndComputeMaxData([],[],1);
     end
 
 end

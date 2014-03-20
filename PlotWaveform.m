@@ -226,11 +226,25 @@ hParent = [];
 AxesToUse = [];
 myPostZoomAction = @NOP;
 iZoomMode = 0;
-iVerbose = 0;
+iVerbose = 1;
 progVerb = [];
 
+[~,szReleaseDate]   = version;
+nReleaseDate        = datenum(szReleaseDate);
+nAudioreadAvailable = 735123;
+bUseAudioread = nReleaseDate >= nAudioreadAvailable;
+
 if ischar(szFileNameOrData)
-    [FileSize,fs] = wavread(szFileNameOrData,'size');
+    if bUseAudioread
+        stInfo = audioinfo(szFileNameOrData);
+        fs = stInfo.SampleRate;
+        FileSize = [stInfo.TotalSamples stInfo.NumChannels];
+    else
+        [FileSize,fs] = wavread(szFileNameOrData,'size'); %#ok
+
+    end
+    
+    
     bIsWavFileFlag = 1;
 elseif isnumeric(szFileNameOrData)
     FileSize = size(szFileNameOrData);
@@ -291,7 +305,7 @@ varargin = processInputParameters(varargin); %#ok
             if ischar(arg) && strcmpi(arg,'PrintResolution')
                 iPrintResolution = cParameters{kk + 1};
                 if  iPrintResolution ~=150||300||600
-                    warning('PrintResolution should be 150, 300 or 600') %#ok
+                    warning('PrintResolution should be 150, 300 or 600')
                 end
                 valuesToDelete = [valuesToDelete kk:kk+1]; %#ok
             end
@@ -398,8 +412,12 @@ if isempty(get(gcf, 'ResizeFcn'))
     set(gcf, 'ResizeFcn', @ResizeFcn);
 end
 
-    function ReadAndComputeMaxData(iManualPlotWidth, NewStartEndVal)
+    function ReadAndComputeMaxData(iManualPlotWidth, NewStartEndVal, ...
+            bReplotOriginalValuesFlag)
         
+        if nargin < 3 && ~exist('bReplotOriginalValuesFlag', 'var')
+            bReplotOriginalValuesFlag = 0;
+        end
         
         if iVerbose; progVerb = make_prog_bar('PlotWaveform verbose'); tic; end
             
@@ -474,13 +492,19 @@ end
                     if iVerbose; progVerb(mm); end %#ok
                     
                     if bIsWavFileFlag
-                        curBlock = wavread(szFileNameOrData, ...
-                            [(mm-1)*MaxCompLen+ indBlocks(1) ...
-                              mm   *MaxCompLen+(indBlocks(1)-1)]);
+                        if bUseAudioread
+                            curBlock = audioread(szFileNameOrData, ...
+                                [(mm-1)*MaxCompLen+ indBlocks(1) ...
+                                mm   *MaxCompLen+(indBlocks(1)-1)]);
+                        else
+                            curBlock = wavread(szFileNameOrData, ...
+                                [(mm-1)*MaxCompLen+ indBlocks(1) ...
+                                mm   *MaxCompLen+(indBlocks(1)-1)]);
+                        end
                     else
                         curBlock = wavData(...
                             (mm-1)*MaxCompLen+ indBlocks(1):...
-                             mm   *MaxCompLen+(indBlocks(1)-1),:);
+                            mm   *MaxCompLen+(indBlocks(1)-1),:);
                     end
                     
                     
@@ -495,7 +519,11 @@ end
                 if iVerbose; progVerb('Discrete read-in', 1, 2); end %#ok
 
                 if bIsWavFileFlag
-                    SampleValuesPos = wavread(szFileNameOrData,indBlocks);
+                    if bUseAudioread
+                        SampleValuesPos = audioread(szFileNameOrData,indBlocks);
+                    else
+                        SampleValuesPos = wavread(szFileNameOrData,indBlocks);
+                    end
                 else
                     SampleValuesPos = wavData(indBlocks(1):indBlocks(2),:);
                 end
