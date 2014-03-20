@@ -1657,23 +1657,6 @@ init();
        
     end
 
-    function createWavePosLine
-        
-        for nn=1:numel(hWaveAxes)
-            
-            hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 fs/2], ...
-                'Parent', hWaveAxes(nn), ...
-                'Color', [000/255 000/255 000/255], ...
-                'XData', [CurrentPos CurrentPos], ...
-                'LineWidth', 1.5);
-            
-            
-        end
-        
-    end
-
-
-
 %% Callback on user hit: stop
     function CallbackStop(~,~)
                 
@@ -1732,6 +1715,20 @@ init();
 
     end
 
+%% Function to plot new positioning lines in all axes
+    function createWavePosLine
+        
+        for nn=1:numel(hWaveAxes)
+            
+            hWavePos(nn) = line([CurrentPos CurrentPos],[-1.5 fs/2], ...
+                'Parent', hWaveAxes(nn), ...
+                'Color', [000/255 000/255 000/255], ...
+                'XData', [CurrentPos CurrentPos], ...
+                'LineWidth', 1.5); 
+        end
+    end
+
+%% Function to gather the number of output devices
     function getNumberOfOutputs(devID)
         
         if devID == 0
