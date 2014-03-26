@@ -554,41 +554,6 @@ init();
 %% Set the spectrogram's color depth
     function SetSpectrColordepth
         
-        
-        %% Different approach by completely reworking the CData (too intense)
-%         for xx=1:numel(hSpectrograms)
-%             
-%             if isempty(OrigSpectrCData) || ...
-%                     numel(OrigSpectrCData) < numel(hSpectrograms)
-%                 OrigSpectrCData{xx} = get(hSpectrograms(xx), 'CData');
-%             end
-%             
-%         end
-%         
-%         for xx=1:numel(hSpectrograms)
-%             
-%             lowestCData     = min(min(OrigSpectrCData{xx}));
-%             highestCData    = max(max(OrigSpectrCData{xx}));
-%             
-%             for uu=1:size(OrigSpectrCData{xx},1)
-%                 
-%                 for vv=1:size(OrigSpectrCData{xx},2)
-%                     
-%                     if OrigSpectrCData{xx}(uu,vv) < -100+100*vColormapVal(1)
-%                         CurSpectrCData{xx}(uu,vv) = lowestCData;
-%                     elseif OrigSpectrCData{xx}(uu,vv) > -100+100*vColormapVal(2)
-%                         CurSpectrCData{xx}(uu,vv) = highestCData;
-%                     else
-%                         CurSpectrCData{xx}(uu,vv) = OrigSpectrCData{xx}(uu,vv);
-%                     end
-%                 end
-%             end
-%             
-%             set(hSpectrograms(xx), 'Cdata', CurSpectrCData{xx});
-%             
-%         end
-
-
         if bWaveDisplayType == 2
 
             if isempty(OrigColormapVal)
