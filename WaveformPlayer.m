@@ -170,7 +170,7 @@ auxSize             = [ 400 300];
 
 %% Set global settings
 szSaveFileTitle = 'WaveformPlayer.ini';
-iBlockLen       = 1024;
+iBlockLen       = 4096;
 iWinMin         = 256;
 iWinDef         = 2048;
 iWinMax         = 8192;
@@ -186,7 +186,7 @@ szDefaultDeviceWin = 'Microsoft Soundmapper - Output';
 szDefaultDeviceLin = '';
 
 
-nPageBufferSize = 3;
+nPageBufferSize = 5;
 iUpdateInterval = 0;
 
 
@@ -1226,7 +1226,6 @@ init();
         PlayIdx = PlayIdx-1;
         curStartIdx = PlayIdx+vPlayStartEnd(1);
         vPageBuffer = -ones(1,nPageBufferSize);
-        iUpdateInterval = 0;
         
         while bIsPlayingFlag
             
