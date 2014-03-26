@@ -107,62 +107,21 @@ function [myFigure myAxes myPrint vZoomPosition OrigStartEndVal ...
 %
 %   numChannels:        returns the number of channels in the WAVE
 %
+% -----------------------------------------------------------------------------
+%
+%  Created by:
+%
+%  Jan Willhaus <a href="mailto:mail@janwillhaus.de"><mail@janwillhaus.de></a>
+%      (c) 2011-2014 on behalf of Jade University of Applied Sciences
+%      and the Institute for Hearing Techology and Audiology
 
-%--------------------------------------------------------------------------
-% VERSION 0.91
-%   Author: Jan Willhaus, Joerg Bitzer (c) IHA @ Jade Hochschule
-%   applied licence see EOF
+% -----------------------------------------------------------------------------
+%% Author: Jan Willhaus (c), applied licence see EOF
 %
-%   Version History:
-%   Ver. 0.01   initial proof of concept script             10-Aug-2011     JB
-%   Ver. 0.10   inital build of the function                27-Aug-2011     JW
-%   Ver. 0.11   implementing mono & stereo view             31-Aug-2011     JW
-%   Ver. 0.12   debugging second zoom layer                 01-Sep-2011     JW
-%   Ver. 0.21   implementing two-axis view for stereo       07-Sep-2011     JW
-%   Ver. 0.22   adding possibility to read multichannel     08-Sep-2011     JW
-%   Ver. 0.23   improvements on multi-axis view             15-Sep-2011     JW
-%   Ver. 0.24   debugging zoom layer switch                 22-Sep-2011     JW
-%   Ver. 0.25   improvements on second zoom layer           28-Sep-2011     JW
-%   Ver. 0.30   implementing customized zoom menu           12-Oct-2011     JW
-%   Ver. 0.31   debugging customized zoom menu              23-Oct-2011     JW
-%   Ver. 0.32   code cleaning, killing matlab warnings      01-Dec-2011     JW
-%   Ver. 0.40   implementing print-functionhandle           30-Jan-2012     JW
-%   Ver. 0.50   implementing wave-overview                  15-Feb-2012     JW
-%   Ver. 0.51   fixed faulty zoom extract                   16-Feb-2012     JW
-%   Ver. 0.60   supports PlotWaveformOverview function      27-Feb-2012     JW
-%   Ver. 0.61   code cleaning, updating the help info       09-Mar-2012     JW
-%   Ver. 0.70   code cleaning again. ready for public       01-Jun-2012     JW
-%   Ver. 0.71   fixed some UI glitches due to use of gca    12-jan-2013     JW
-%   Ver. 0.80   added 'axes' behavioral setting             12-Jan-2013     JW
+%% Changelog can be found in CHANGELOG.md in the bundle.
 %
-%   Ver. 0.90   tons of improvements due to extended        25-Feb-2013     JW
-%               usage in WaveformPlayer:
-%               * fixed heavy glitches in terms of multi-
-%                 axes and -figure use: The behavior of the
-%                 'Axes' function property now works and
-%                 allows the user to plot waveforms in any
-%                 already given axes.
-%               * reset to original values now works 
-%                 correctly when ChannelView is off and 
-%                 supports alpha blending in this state.
-%               * other small bugfixes and improvements.
-%
-%   Ver. 0.91   Fixed the multi-axes behavior. PWF can     09-Mar-2013      JW
-%               now be placed in axes even with channel
-%               view activated. All channels will be 
-%               plotted in place of the "parent" axes.
-%
-%   Ver. 1.0    Major release! PWF is now extremely fast   06-Sep-2013      JW
-%               in working with huge files, due to a new
-%               approach to block-processing the wavread
-%               itself. 1GB of wave can easily be loaded
-%               in about 15 seconds, while staying low in
-%               memory consumption.
-%               Additional info: future versioning info 
-%               will be placed inside the CHANGELOG.md 
-%               file included in the repo. That way it is 
-%               easier to handle the multiple functions of 
-%               the bundle. Cheers!
+% -----------------------------------------------------------------------------
+
 
 %% evaluation of input data
 if nargin == 0, help(mfilename); return; end;
