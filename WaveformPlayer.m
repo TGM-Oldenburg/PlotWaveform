@@ -1663,7 +1663,7 @@ init();
 end
 
 %%------------------------ Licence ----------------------------------------
-% Copyright (c) <2011> Jan Willhaus
+% Copyright (c) <2011-2014> Jan Willhaus
 % Institute for Hearing Technology and Audiology
 % Jade University of Applied Sciences 
 % Permission is hereby granted, free of charge, to any person obtaining 
