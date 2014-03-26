@@ -1,5 +1,8 @@
 # PLOTWAVEFORM Changelog
 
+## v2.0 (26-Mar-2014)
+
+* Swapped Msound with [Playrec](https://github.com/Janwillhaus/playrec) and removed the binaries from this repository. With Playrec in Matlab path you'll now be able to use the playback functionality of the WaveformPlayer even on Macintosh! Make sure to get the most recent binaries of Playrec: https://github.com/Janwillhaus/playrec/releases/latest
 
 ## v1.1 (20-Mar-2014)
 
