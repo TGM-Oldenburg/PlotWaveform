@@ -1,4 +1,5 @@
-function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szFileName, varargin)
+function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(...
+    szFileName, varargin)
 %PLOTWAVEFORMPLAYER    waveform plot with player functionality
 %   PlotWaveform plots the waveform of a WAVE-file, or vector of WAVE-data
 %   using a block by block mean calculation algorithm. WAVE-data first gets
@@ -527,8 +528,8 @@ init();
                 'Tag', 'spectrs', ...
                 'Visible', 'on');
 
-            szEval = ['colormap(hWaveAxes(' num2str(xx) '),' guiColormapDef ');'];
-            
+            szEval = ['colormap(hWaveAxes(' ...
+                num2str(xx) '),' guiColormapDef ');'];
             eval(szEval);            
             hold(hWaveAxes(xx), 'off')
             set(hWaveAxes(xx), ...
@@ -1146,8 +1147,8 @@ init();
            
            
            for ax=1:numel(hWaveAxes)
-               szEval =  ['colormap(hWaveAxes(' num2str(ax) '),' guiColormapDef ')'];
-
+               szEval =  ['colormap(hWaveAxes(' ...
+                   num2str(ax) '),' guiColormapDef ')'];
                eval(szEval);
            end
         end
@@ -1247,7 +1248,8 @@ init();
             
             for pp=1:2
             
-                vColormapVal(pp) = get(handles.hSliderColormapDepth(pp), 'Value');
+                vColormapVal(pp) = get(...
+                    handles.hSliderColormapDepth(pp), 'Value');
                 
                 set(handles.hValueColormapDepth(pp), 'String', ...
                     sprintf('%3.1f',vColormapVal(pp)));
@@ -1438,7 +1440,8 @@ init();
         PreMultiplier = mod(1,bMuteChannels);
         
         for mute=1:numChannels
-            ProcessingBlock(:,mute) = PreMultiplier(mute).*ProcessingBlock(:,mute);
+            ProcessingBlock(:,mute) = ...
+                PreMultiplier(mute).*ProcessingBlock(:,mute);
         end
         
         %% Routing by the routing matrix
