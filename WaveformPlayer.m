@@ -905,51 +905,36 @@ init();
         end
         
         %% - Menubar: Input Device Entry
-        
-        % gathering all the devices that have input capabilities
-        if bPlaybackSupportFlag
-            [stDevices, defaultIDs] = msound('deviceinfo');
-            vOutputDevices = find([stDevices.outputs]>0);
-            vSelectedDevice = zeros(1, length(vOutputDevices)+1);
-            
-            % menubar entry for default device ID 0 in Msound
             handles.hMenubarInterface = uimenu('Label','Audio');
-            vSelectedDevice(1) = uimenu(handles.hMenubarInterface, ...
-                'Label','(ID: 0) Default Device', ...
-                'Callback',{@setOutputDeviceID, defaultIDs(2)});
             
-            if globsetOutputID == 0
-                set(vSelectedDevice(1), 'Checked', 'on');
-            end
+        % gathering all the devices that have output capabilities
+        stDevices = playrec('getDevices');
+        stDevices = stDevices([stDevices.outputChans]>0);
             
+        % Set the default output to the first available device
+        globsetOutputID = stDevices(1).deviceID;
             
             % run through input devices, put IDs and name into menubar
-            for kk=1:length(vOutputDevices)
+        hDevicesInMenu = zeros(1, length(stDevices));
+        for kk=1:length(hDevicesInMenu)
                 
-                % separator above first devices (looks better)
-                if kk == 1
-                    szSepString = 'on';
-                else
-                    szSepString = 'off';
-                end
                 
-                vSelectedDevice(kk+1) = uimenu(...
+            hDevicesInMenu(kk) = uimenu(...
                     handles.hMenubarInterface, ...
-                    'Label', ['(ID: ' num2str(vOutputDevices(kk)) ') ' ...
-                    stDevices(vOutputDevices(kk)).('name')], ...
+                'Label', sprintf('(ID: %i) %s',...
+                stDevices(kk).deviceID, ...
+                stDevices(kk).name), ...
                     'Callback', ...
-                    {@setOutputDeviceID, vOutputDevices(kk)}, ...
-                    'Separator', szSepString);
+                {@setOutputDeviceID, stDevices(kk).deviceID});
                 
-                if vOutputDevices(kk) == globsetOutputID
-                    set(vSelectedDevice(kk+1), 'Checked', 'on');
+            if stDevices(kk).deviceID == globsetOutputID
+                set(hDevicesInMenu(kk), 'Checked', 'on');
                 end
                 
             end
             
             getNumberOfOutputs(globsetOutputID);
             
-        end
         
         %% - Menubar: Channel Routing Entry
         
@@ -1331,11 +1316,11 @@ init();
                 end
                 
                 drawnow;
-                % SUPER INEFFICIENT! ALTERNATIVE?
             else
                 iRedrawCounter = iRedrawCounter+1;
             end
 
+            
             %% Actual Playback actions
             
             % Handle end of playback section first if occurs: needs zeropadding
@@ -1596,14 +1581,8 @@ init();
 %% Function to gather the number of output devices
     function getNumberOfOutputs(devID)
         
-        if devID == 0
-            devID = defaultIDs(2);
-        end
-        
-        stDevices = msound( 'deviceInfo');
-        vActualDevice = [stDevices.id]==devID;
-        numOutputs = stDevices(vActualDevice).('outputs');
-        
+        numOutputs = stDevices([stDevices.deviceID]==devID).outputChans;
+        vChanMap   = 1:numOutputs;
         routingMatrix = eye(numChannels, numOutputs);
         
     end
