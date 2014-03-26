@@ -174,15 +174,6 @@ function [hFigure, hWaveAxes, hOverviewAxes, stFuncHandles] = WaveformPlayer(szF
 %% evaluation of input data
 if nargin == 0, help(mfilename); return; end;
 
-%% Macintosh notification
-if ismac
-    disp('Macintosh is currently not supported.');
-    disp('Use PlotWaveformOverview instead.');
-    bPlaybackSupportFlag = 0;
-%     return
-else
-    bPlaybackSupportFlag = 1;
-end
 
 [~,szReleaseDate]   = version;
 nReleaseDate        = datenum(szReleaseDate);
@@ -231,18 +222,20 @@ iWinMax         = 8192;
 iNFFTMin        = 256;
 iNFFTDef        = 512;
 iNFFTMax        = 8192;
-iUpdateInterval = 1;
 iIconSize       = 24;
 globsetOutputID = 0;
 
-vPlayStartEnd = [];
+
+nPageBufferSize = 3;
+iUpdateInterval = 0;
+
 
 %% Set global variables
 PlayIdx         = 1;
 vZoomPosition   = [];
+vPlayStartEnd   = [];
 vButtonSize     = [];
-vOutputDevices  = [];
-vSelectedDevice = [];
+hDevicesInMenu  = [];
 vAxesSize       = [];
 iZoomWidth      = [];
 vStartEndVal    = [];
@@ -250,7 +243,7 @@ caOrigSpectrData= {};
 maOrigSpectrData= [];
 routingMatrix   = [];
 stDevices       = [];
-defaultIDs      = [];
+vChanMap        = [];
 numOutputs      = [];
 iRedrawCounter  = 0;
 vColormapVal    = [];
@@ -905,36 +898,36 @@ init();
         end
         
         %% - Menubar: Input Device Entry
-            handles.hMenubarInterface = uimenu('Label','Audio');
-            
+        handles.hMenubarInterface = uimenu('Label','Audio');
+        
         % gathering all the devices that have output capabilities
         stDevices = playrec('getDevices');
         stDevices = stDevices([stDevices.outputChans]>0);
-            
+        
         % Set the default output to the first available device
         globsetOutputID = stDevices(1).deviceID;
-            
-            % run through input devices, put IDs and name into menubar
+        
+        % run through input devices, put IDs and name into menubar
         hDevicesInMenu = zeros(1, length(stDevices));
         for kk=1:length(hDevicesInMenu)
-                
-                
+            
+            
             hDevicesInMenu(kk) = uimenu(...
-                    handles.hMenubarInterface, ...
+                handles.hMenubarInterface, ...
                 'Label', sprintf('(ID: %i) %s',...
                 stDevices(kk).deviceID, ...
                 stDevices(kk).name), ...
-                    'Callback', ...
+                'Callback', ...
                 {@setOutputDeviceID, stDevices(kk).deviceID});
-                
+            
             if stDevices(kk).deviceID == globsetOutputID
                 set(hDevicesInMenu(kk), 'Checked', 'on');
-                end
-                
             end
             
-            getNumberOfOutputs(globsetOutputID);
-            
+        end
+        
+        getNumberOfOutputs(globsetOutputID);
+        
         
         %% - Menubar: Channel Routing Entry
         
@@ -1244,12 +1237,13 @@ init();
             
         end
         
-        %% Get msound going
+        %% Get playrec going
         
-        if bPlaybackSupportFlag
-            msound('close');
-            msound('openWrite', globsetOutputID, fs, iBlockLen, numOutputs);
+        if playrec('isInitialised')
+            playrec('reset');
         end
+        playrec('init', fs, globsetOutputID, -1, ...
+            numOutputs, [],iBlockLen);
         
     end
 
@@ -1283,14 +1277,16 @@ init();
 %% Function called while playing is activated
     function whilePlaying()
 
+        % Generate indices and page buffer
         PlayIdx = PlayIdx-1;
         curStartIdx = PlayIdx+vPlayStartEnd(1);
+        vPageBuffer = -ones(1,nPageBufferSize);
+        iUpdateInterval = 0;
         
         while bIsPlayingFlag
             
             
             %% Redrawing the Interface
-            tic
             
             if iRedrawCounter == iUpdateInterval
                 iRedrawCounter = 0;
@@ -1342,15 +1338,9 @@ init();
                 OutZP(1:length(curBlock),:) = curBlock;
                 
                 % Output
-                T = toc;
-                if bPlaybackSupportFlag
-                    OutZPComplete = RoutingAndMuting(OutZP);
-                    
-                    msound('putsamples', ...
-                        OutZPComplete);
-                else
-                    pause(iBlockLen/fs-T)
-                end
+                maOutBlock = RoutingAndMuting(OutZP);
+                vPageBuffer(end) = playrec('play', maOutBlock, vChanMap);
+                
                 % Resetting playback index
                 PlayIdx = 0;
                 
@@ -1361,32 +1351,35 @@ init();
                 
             elseif bIsPlayingFlag
                 
-                if bPlaybackSupportFlag
-                    
-                    if bUseAudioread
-                        curBlock = audioread(szFileName, ...
-                            [curStartIdx ...
-                            curStartIdx+iBlockLen-1]);
-                    else
-                        curBlock = wavread(szFileName, ...
-                            [curStartIdx ...
-                            curStartIdx+iBlockLen-1]); %#ok
-                    end
-                    OutZPComplete = RoutingAndMuting(curBlock);
-                    
-                    msound('putsamples', ...
-                        OutZPComplete);
+                if bUseAudioread
+                    curBlock = audioread(szFileName, ...
+                        [curStartIdx ...
+                        curStartIdx+iBlockLen-1]);
                 else
-                    T = toc;
-                    pause(iBlockLen/fs-T)
+                    curBlock = wavread(szFileName, ...
+                        [curStartIdx ...
+                        curStartIdx+iBlockLen-1]); %#ok
                 end
+                maOutBlock = RoutingAndMuting(curBlock);
+                
+                vPageBuffer(end) = playrec('play', maOutBlock, vChanMap);
+                
                 
                 
                 PlayIdx = PlayIdx+iBlockLen-1;
                 curStartIdx = PlayIdx+vPlayStartEnd(1);
                 
             end
+            
+            % Block until the first frame in buffer has been processed
+            playrec('block', vPageBuffer(1));
+            
+            % Clear old buffer frame and add an empty one
+            vPageBuffer = [vPageBuffer(2:end) -1];
+            
         end
+        
+        
         
         % Activate the correct UI buttons
         set(handles.hPBPlay,     'Enable', 'on' )
@@ -1396,6 +1389,8 @@ init();
             delete(hOverviewPos);
             delete(hWavePos);
         end
+        
+        playrec('delPage');
         
         if bIsEndOfWaveFlag
             PlayIdx          = 1;
@@ -1537,8 +1532,8 @@ init();
     function setOutputDeviceID(object,~,devID)
         
         % Visually removing checkmarks from all the menu entries
-        for nn=1:length(vOutputDevices)+1
-            set(vSelectedDevice(nn), 'Checked', 'off');
+        for nn=1:length(stDevices)
+            set(hDevicesInMenu(nn), 'Checked', 'off');
         end
         
         
@@ -1553,14 +1548,13 @@ init();
         
         save(szSaveFile, 'globset*', '-mat', '-append')
         
-        if bPlaybackSupportFlag
-            msound('close')
-            msound('openWrite', ...
-                globsetOutputID, ...
-                fs, ...
-                iBlockLen, ...
-                numOutputs);
+
+        if playrec('isInitialised')
+            playrec('reset');
         end
+        playrec('init', fs, globsetOutputID, -1, ...
+            numOutputs, [],iBlockLen);
+        
         
 
     end
