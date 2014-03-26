@@ -971,7 +971,7 @@ end
 end
 
 %%------------------------ Licence ---------------------------------------------
-% Copyright (c) <2011-2012> Jan Willhaus, Joerg Bitzer
+% Copyright (c) <2011-2014> Jan Willhaus, Joerg Bitzer
 % Institute for Hearing Technology and Audiology
 % Jade University of Applied Sciences 
 % Permission is hereby granted, free of charge, to any person obtaining 
