@@ -225,6 +225,11 @@ iNFFTMax        = 8192;
 iIconSize       = 24;
 globsetOutputID = 0;
 
+% Setting the default audio interface (os-specific)
+szDefaultDeviceMac = 'Built-In Output';
+szDefaultDeviceWin = 'Microsoft Soundmapper - Output';
+szDefaultDeviceLin = '';
+
 
 nPageBufferSize = 3;
 iUpdateInterval = 0;
@@ -905,7 +910,26 @@ init();
         stDevices = stDevices([stDevices.outputChans]>0);
         
         % Set the default output to the first available device
-        globsetOutputID = stDevices(1).deviceID;
+        defaultIDidx = 1;
+        
+        if ismac
+            specIDidx = strcmpi({stDevices.name}, szDefaultDeviceMac);
+            if any(specIDidx)
+                defaultIDidx = specIDidx;
+            end
+        elseif ispc
+            specIDidx = strcmpi({stDevices.name}, szDefaultDeviceWin);
+            if amy(specIDidx)
+                defaultIDidx = specIDidx;
+            end
+        else
+            specIDidx = strcmpi({stDevices.name}, szDefaultDeviceLin);
+            if amy(specIDidx)
+                defaultIDidx = specIDidx;
+            end
+        end
+        
+        globsetOutputID = stDevices(defaultIDidx).deviceID;
         
         % run through input devices, put IDs and name into menubar
         hDevicesInMenu = zeros(1, length(stDevices));
