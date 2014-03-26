@@ -185,7 +185,7 @@ hParent = [];
 AxesToUse = [];
 myPostZoomAction = @NOP;
 iZoomMode = 0;
-iVerbose = 1;
+iVerbose = 0;
 progVerb = [];
 
 [~,szReleaseDate]   = version;
