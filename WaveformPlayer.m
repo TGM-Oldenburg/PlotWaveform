@@ -170,7 +170,7 @@ auxSize             = [ 400 300];
 
 %% Set global settings
 szSaveFileTitle = 'WaveformPlayer.ini';
-iBlockLen       = 4096;
+iBlockLen       = 1024;
 iWinMin         = 256;
 iWinDef         = 2048;
 iWinMax         = 8192;
@@ -179,15 +179,15 @@ iNFFTDef        = 512;
 iNFFTMax        = 8192;
 iIconSize       = 24;
 globsetOutputID = 0;
-
+vBlocksizeVals  = 2.^(8:15);
 % Setting the default audio interface (os-specific)
 szDefaultDeviceMac = 'Built-In Output';
 szDefaultDeviceWin = 'Microsoft Soundmapper - Output';
 szDefaultDeviceLin = '';
 
 
-nPageBufferSize = 1;
-iUpdateInterval = 0;
+nPageBufferSize = 5;
+iUpdateInterval = 5;
 
 
 %% Set global variables
@@ -870,6 +870,13 @@ init();
             
         end
         
+        uimenu(...
+                handles.hMenubarInterface, ...
+                'Label', 'Modify ...', ...
+                'Checked', 'off', ...
+                'Callback', @modifyAudioSettings, ...
+                'Separator', 'on');
+        
         getNumberOfOutputs(globsetOutputID);
         
         
@@ -1072,6 +1079,153 @@ init();
            end
         end
         
+        
+        %% - - Callback on user modifying the audio settings
+        function modifyAudioSettings(~,~)
+            
+            
+            FigureHeight = 150;
+            FigureWidth  = 300;
+            
+            %% Beautifying: Centering figure to come
+            set(hFigure,'Units','pixels');
+            vFigSze = get(hFigure, 'Position');
+            auxSize = [...
+                vFigSze(3:4)/2-auxSize(1:2)/2+vFigSze(1:2) ...
+                FigureWidth FigureHeight];
+            
+            %% Building a new figure
+            hAudioSettingsPanel = figure(...
+                'Name', 'Colormap Depth', ...
+                'NumberTitle', 'off', ...
+                'Resize', 'off', ...
+                'Position', auxSize, ...
+                'Color', guiBackgroundColor);
+            
+            set(hAudioSettingsPanel,'toolbar','none')
+            set(hAudioSettingsPanel,'menubar', 'none')
+            
+            hPanel = uipanel(...
+                'Parent', hAudioSettingsPanel, ...
+                'Title', 'Playback Settings', ...
+                'Units', 'normalized', ...
+                'Position', [0.02 0.05 0.96 0.9], ...
+                'BackgroundColor', guiBackgroundColor);
+            
+            %% Place sliders to modify high and low
+            
+               
+            [~, iCurSelection] = max(vBlocksizeVals==iBlockLen);
+            
+            if isempty(iCurSelection )
+                iCurSelection = 1;
+            end
+            
+            uicontrol('Style', 'slider',...
+                'Parent', hPanel, ...
+                'Min',0, ...
+                'Max',50, ...
+                'SliderStep', [0.02 0.2], ...
+                'Value',nPageBufferSize, ...
+                'units', 'normalized', ...
+                'tag', 'buffersize', ...
+                'Position', [0.35 0.66 0.4 0.15], ...
+                'Callback', @setNewAudioSettings);
+            
+            uicontrol('Style', 'slider',...
+                'Parent', hPanel, ...
+                'Min',0, ...
+                'Max',50, ...
+                'SliderStep', [0.02 0.2], ...
+                'Value',iUpdateInterval, ...
+                'units', 'normalized', ...
+                'tag', 'updateint', ...
+                'Position', [0.35 0.44 0.4 0.15], ...
+                'Callback', @setNewAudioSettings);
+         
+            uicontrol('Style', 'popupmenu',...
+                'Parent', hPanel, ...
+                'Value', iCurSelection, ...
+                'String', vBlocksizeVals, ...
+                'units', 'normalized', ...
+                'tag', 'blocklen', ...
+                'Position', [0.35 0.22 0.4 0.15], ...
+                'Callback', @setNewAudioSettings);
+            
+            
+            %% Label the sliders
+            uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', 'Buffer Size  ', ...
+                'units', 'normalized', ...
+                'Position', [0.02 0.66 0.30 0.14], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'right');
+            
+            uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', 'Update Interval  ', ...
+                'units', 'normalized', ...
+                'Position', [0.02 0.44 0.30 0.14], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'right');
+            
+            uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', 'Block Size  ', ...
+                'units', 'normalized', ...
+                'Position', [0.02 0.22 0.30 0.11], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'right');
+            
+            %% Show the current slider/depth values
+            handles.szBuffersize = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', num2str(nPageBufferSize), ...
+                'units', 'normalized', ...
+                'Position', [0.80 0.66 0.15 0.14], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left');
+            
+            handles.szUpdateInterval = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', num2str(iUpdateInterval), ...
+                'units', 'normalized', ...
+                'Position', [0.80 0.44 0.15 0.14], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left');
+            
+            handles.szBlockLen = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', num2str(iBlockLen), ...
+                'units', 'normalized', ...
+                'Position', [0.80 0.22 0.15 0.11], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left');
+                
+        end
+    
+        
+        function setNewAudioSettings(obj,~)
+           
+            szTag = get(obj, 'tag');
+            
+            switch szTag
+                case 'buffersize'
+                    nPageBufferSize = get(obj, 'Value');
+                    set(handles.szBuffersize, 'String', num2str(nPageBufferSize));
+                case 'updateint'
+                    iUpdateInterval = get(obj, 'Value');
+                    set(handles.szUpdateInterval, 'String', num2str(iUpdateInterval));
+                case 'blocklen'
+                    iBlockLen = vBlocksizeVals(get(obj, 'Value'));
+                    set(handles.szBlockLen, 'String', num2str(iBlockLen));
+                    playrecInit;
+            end
+            
+        end
+        
+        
         %% - - Callback on user modifying color map
         function modifyColormap(~,~,~)
         
@@ -1221,13 +1375,14 @@ init();
         PlayIdx = PlayIdx-1;
         curStartIdx = PlayIdx+vPlayStartEnd(1);
         vPageBuffer = -ones(1,nPageBufferSize);
-        
+        strlen = 0;
         while bIsPlayingFlag
-            
+            htic = tic;
             
             %% Redrawing the Interface
             
-            if iRedrawCounter == iUpdateInterval
+            if iRedrawCounter == iUpdateInterval && vPageBuffer(1) ~= -1                
+                
                 iRedrawCounter = 0;
                 
                 if bPlaySelectionFlag
@@ -1253,6 +1408,10 @@ init();
                 drawnow;
             else
                 iRedrawCounter = iRedrawCounter+1;
+            end
+            
+            if iRedrawCounter > iUpdateInterval
+                iRedrawCounter = 0;
             end
 
             
@@ -1311,10 +1470,27 @@ init();
             end
             
             % Block until the first frame in buffer has been processed
+            ticblock = tic;
             playrec('block', vPageBuffer(1));
+            tblock = toc(ticblock);
             
             % Clear old buffer frame and add an empty one
             vPageBuffer = [vPageBuffer(2:end) -1];
+            
+            % Adapt buffer size (might have changed in settings)
+            while vPageBuffer > nPageBufferSize+1
+                vPageBuffer = vPageBuffer(2:end);
+            end
+            
+%             % Adapt block length (might have changed in settings)
+%             if curBlockSize ~= 
+            htic = toc(htic);
+            fprintf(repmat('\b', 1, strlen));
+            strlen = fprintf('%8.5fs', htic-tblock);
+            
+            if htic-tblock >= iBlockLen/fs
+                strlen = strlen + fprintf('!!!');
+            end
             
         end
         
@@ -1447,7 +1623,7 @@ init();
         set(handles.hPBPlay,     'Enable', 'on' )
         set(handles.hPBPause,    'Enable', 'off')
         set(handles.hPBStop,     'Enable', 'off')
-        
+       
         % Reset index and flags
         PlayIdx          = 1;
         bIsPlayingFlag   = 0;
