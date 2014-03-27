@@ -1389,14 +1389,15 @@ init();
         % Generate indices and page buffer
         PlayIdx = PlayIdx-1;
         curStartIdx = PlayIdx+vPlayStartEnd(1);
-        vPageBuffer = -ones(1,globsetnPageBufferSize);
+        vPageBuffer = -ones(1,globsetnPageBufferSize+1);
 %         strlen = 0;
         while bIsPlayingFlag
 %             htic = tic;
             
             %% Redrawing the Interface
             
-            if iRedrawCounter == globsetiUpdateInterval && vPageBuffer(1) ~= -1                
+            if iRedrawCounter == globsetiUpdateInterval ...
+                    && (vPageBuffer(1) ~= -1  || numel(vPageBuffer == 1))
                 
                 iRedrawCounter = 0;
                 
@@ -1485,25 +1486,18 @@ init();
             end
             
             % Block until the first frame in buffer has been processed
-%             ticblock = tic;
             playrec('block', vPageBuffer(1));
-%             tblock = toc(ticblock);
             
             % Clear old buffer frame and add an empty one
             vPageBuffer = [vPageBuffer(2:end) -1];
             
             % Adapt buffer size (might have changed in settings)
-            while vPageBuffer > globsetnPageBufferSize+1
+            while numel(vPageBuffer) > globsetnPageBufferSize+1
                 vPageBuffer = vPageBuffer(2:end);
             end
-            
-%             htic = toc(htic);
-%             fprintf(repmat('\b', 1, strlen));
-%             strlen = fprintf('%8.5fs', htic-tblock);
-%             
-%             if htic-tblock >= globsetiBlockLen/fs
-%                 strlen = strlen + fprintf('!!!');
-%             end
+            while numel(vPageBuffer) < globsetnPageBufferSize+1
+                vPageBuffer = [vPageBuffer -1]; %#ok
+            end
             
         end
         
