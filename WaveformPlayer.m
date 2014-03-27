@@ -1183,12 +1183,7 @@ init();
         end
         
         %% Get playrec going
-        
-        if playrec('isInitialised')
-            playrec('reset');
-        end
-        playrec('init', fs, globsetOutputID, -1, ...
-            numOutputs, [],iBlockLen);
+        playrecInit; 
         
     end
 
@@ -1491,15 +1486,7 @@ init();
         
         save(szSaveFile, 'globset*', '-mat', '-append')
         
-
-        if playrec('isInitialised')
-            playrec('reset');
-        end
-        playrec('init', fs, globsetOutputID, -1, ...
-            numOutputs, [],iBlockLen);
-        
-        
-
+        playrecInit;
     end
 
 %% Function to plot new positioning lines in all axes
@@ -1656,6 +1643,17 @@ init();
 %% Function causing reset of the zoom (to be used externally)
     function ResetZoomWrapper
         ReadAndComputeMaxData([],[],1);
+    end
+
+%% Function handling the reset of Playrec
+    function playrecInit
+        if playrec('isInitialised')
+            playrec('delPage');
+            playrec('reset');
+        end
+        
+        playrec('init', fs, globsetOutputID, -1, ...
+            numOutputs, [],iBlockLen);
     end
 
 end
