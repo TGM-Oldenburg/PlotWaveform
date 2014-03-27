@@ -839,12 +839,12 @@ init();
             end
         elseif ispc
             specIDidx = strcmpi({stDevices.name}, szDefaultDeviceWin);
-            if amy(specIDidx)
+            if any(specIDidx)
                 defaultIDidx = specIDidx;
             end
         else
             specIDidx = strcmpi({stDevices.name}, szDefaultDeviceLin);
-            if amy(specIDidx)
+            if any(specIDidx)
                 defaultIDidx = specIDidx;
             end
         end
