@@ -186,7 +186,7 @@ szDefaultDeviceWin = 'Microsoft Soundmapper - Output';
 szDefaultDeviceLin = '';
 
 
-nPageBufferSize = 5;
+nPageBufferSize = 1;
 iUpdateInterval = 0;
 
 
@@ -1333,8 +1333,6 @@ init();
             delete(hOverviewPos);
             delete(hWavePos);
         end
-        
-        playrec('delPage');
         
         if bIsEndOfWaveFlag
             PlayIdx          = 1;
