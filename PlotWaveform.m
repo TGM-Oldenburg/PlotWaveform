@@ -184,7 +184,7 @@ FileSize = [];
 hParent = [];
 AxesToUse = [];
 myPostZoomAction = @NOP;
-iZoomMode = 0;
+iZoomMode = 2;
 iVerbose = 0;
 progVerb = [];
 
