@@ -133,7 +133,7 @@ myColorsetFace = [0.4 0.4 1; 1 0.4 0.4; 0.75 0.75 0.5; 0.5 0.75 0.5; ...
 myColorsetEdge = [0.2 0.2 0.2];
 
 % setting threshold for the maximum number of samples to be loaded into memory
-iReadinBlockwiseThreshold = 20000000;
+iReadinBlockwiseThreshold = 5000000;
 % In Matlab, 20.000.000 samples (not meaning frames, but mono-channel samples)
 % account to roughly 150-200MB in memory usage increase, which should be
 % appropriate for most use cases and speeds up plot-buildup time quite a lot
