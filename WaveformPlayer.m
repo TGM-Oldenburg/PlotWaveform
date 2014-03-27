@@ -170,7 +170,6 @@ auxSize             = [ 400 300];
 
 %% Set global settings
 szSaveFileTitle = 'WaveformPlayer.ini';
-iBlockLen       = 1024;
 iWinMin         = 256;
 iWinDef         = 2048;
 iWinMax         = 8192;
@@ -178,7 +177,7 @@ iNFFTMin        = 256;
 iNFFTDef        = 512;
 iNFFTMax        = 8192;
 iIconSize       = 24;
-globsetOutputID = 0;
+globsetOutputID = [];
 vBlocksizeVals  = 2.^(8:15);
 % Setting the default audio interface (os-specific)
 szDefaultDeviceMac = 'Built-In Output';
@@ -186,8 +185,9 @@ szDefaultDeviceWin = 'Microsoft Soundmapper - Output';
 szDefaultDeviceLin = '';
 
 
-nPageBufferSize = 5;
-iUpdateInterval = 5;
+globsetnPageBufferSize = 5;
+globsetiUpdateInterval = 5;
+globsetiBlockLen       = 1024;
 
 
 %% Set global variables
@@ -220,6 +220,7 @@ bIsPausedFlag       = 0;
 bCalcSpectogram     = 1;
 bRoutingEnabled     = 1;
 bWaveDisplayType    = 1;
+bIsStandalone       = 1;
 
 %% Create empty handles
 handles         = [];
@@ -296,23 +297,6 @@ caLeftoverParams = processInputParameters(varargin);
     end
 
 
-caParentDef{1} = 'Axes';
-
-if ~isempty(hParentFig)
-    hAxes = axes('Parent', hParentFig);
-    
-else
-    hParentFig      = figure;
-    hAxes           = axes('Parent', hParentFig);
-
-    %% Retrieve screensize and center position
-    set(0,'Units','pixels');
-    vScrSze = get(0,'screensize');
-    guiSize = [vScrSze(3:4)/2-guiSize(1:2)/2 guiSize(1:2)];
-end
-
-caParentDef{2} = hAxes;
-
 caFuncPath = which('WaveformPlayer.m', '-all');
 szFuncPath = fileparts(caFuncPath{1});
 szSaveFile   = [szFuncPath   filesep     szSaveFileTitle];
@@ -320,7 +304,25 @@ szSaveFile   = [szFuncPath   filesep     szSaveFileTitle];
 if exist(szSaveFile,'file')
     load(szSaveFile, '-mat')
 end
-save(szSaveFile, 'globset*', 'gui*', '-mat')
+
+
+caParentDef{1} = 'Axes';
+
+if ~isempty(hParentFig)
+    set(hParentFig, 'Tag', 'new')
+    hAxes = axes('Parent', hParentFig);
+    bIsStandalone = 0;
+else
+    %% Retrieve screensize and center position
+    set(0,'Units','pixels');
+    vScrSze = get(0,'screensize');
+    guiSize = [vScrSze(3:4)/2-guiSize(1:2)/2 guiSize(1:2)];
+    
+    hParentFig      = figure('Tag', 'new', 'Position', guiSize);
+    hAxes           = axes('Parent', hParentFig);
+end
+
+caParentDef{2} = hAxes;
 
 set(hAxes, ...
     'units', 'normalized', ...
@@ -849,7 +851,9 @@ init();
             end
         end
         
-        globsetOutputID = stDevices(defaultIDidx).deviceID;
+        if isempty(globsetOutputID)
+            globsetOutputID = stDevices(defaultIDidx).deviceID;
+        end
         
         % run through input devices, put IDs and name into menubar
         hDevicesInMenu = zeros(1, length(stDevices));
@@ -1115,7 +1119,7 @@ init();
             %% Place sliders to modify high and low
             
                
-            [~, iCurSelection] = max(vBlocksizeVals==iBlockLen);
+            [~, iCurSelection] = max(vBlocksizeVals==globsetiBlockLen);
             
             if isempty(iCurSelection )
                 iCurSelection = 1;
@@ -1126,7 +1130,7 @@ init();
                 'Min',0, ...
                 'Max',50, ...
                 'SliderStep', [0.02 0.2], ...
-                'Value',nPageBufferSize, ...
+                'Value',globsetnPageBufferSize, ...
                 'units', 'normalized', ...
                 'tag', 'buffersize', ...
                 'Position', [0.35 0.66 0.4 0.15], ...
@@ -1137,7 +1141,7 @@ init();
                 'Min',0, ...
                 'Max',50, ...
                 'SliderStep', [0.02 0.2], ...
-                'Value',iUpdateInterval, ...
+                'Value',globsetiUpdateInterval, ...
                 'units', 'normalized', ...
                 'tag', 'updateint', ...
                 'Position', [0.35 0.44 0.4 0.15], ...
@@ -1181,7 +1185,7 @@ init();
             %% Show the current slider/depth values
             handles.szBuffersize = uicontrol('Style', 'text', ...
                 'Parent', hPanel, ...
-                'String', num2str(nPageBufferSize), ...
+                'String', num2str(globsetnPageBufferSize), ...
                 'units', 'normalized', ...
                 'Position', [0.80 0.66 0.15 0.14], ...
                 'BackgroundColor', guiBackgroundColor-0, ...
@@ -1189,7 +1193,7 @@ init();
             
             handles.szUpdateInterval = uicontrol('Style', 'text', ...
                 'Parent', hPanel, ...
-                'String', num2str(iUpdateInterval), ...
+                'String', num2str(globsetiUpdateInterval), ...
                 'units', 'normalized', ...
                 'Position', [0.80 0.44 0.15 0.14], ...
                 'BackgroundColor', guiBackgroundColor-0, ...
@@ -1197,7 +1201,7 @@ init();
             
             handles.szBlockLen = uicontrol('Style', 'text', ...
                 'Parent', hPanel, ...
-                'String', num2str(iBlockLen), ...
+                'String', num2str(globsetiBlockLen), ...
                 'units', 'normalized', ...
                 'Position', [0.80 0.22 0.15 0.11], ...
                 'BackgroundColor', guiBackgroundColor-0, ...
@@ -1212,16 +1216,18 @@ init();
             
             switch szTag
                 case 'buffersize'
-                    nPageBufferSize = get(obj, 'Value');
-                    set(handles.szBuffersize, 'String', num2str(nPageBufferSize));
+                    globsetnPageBufferSize = get(obj, 'Value');
+                    set(handles.szBuffersize, 'String', num2str(globsetnPageBufferSize));
                 case 'updateint'
-                    iUpdateInterval = get(obj, 'Value');
-                    set(handles.szUpdateInterval, 'String', num2str(iUpdateInterval));
+                    globsetiUpdateInterval = get(obj, 'Value');
+                    set(handles.szUpdateInterval, 'String', num2str(globsetiUpdateInterval));
                 case 'blocklen'
-                    iBlockLen = vBlocksizeVals(get(obj, 'Value'));
-                    set(handles.szBlockLen, 'String', num2str(iBlockLen));
+                    globsetiBlockLen = vBlocksizeVals(get(obj, 'Value'));
+                    set(handles.szBlockLen, 'String', num2str(globsetiBlockLen));
                     playrecInit;
             end
+            
+            save(szSaveFile, 'globset*', 'gui*', '-mat')
             
         end
         
@@ -1374,14 +1380,14 @@ init();
         % Generate indices and page buffer
         PlayIdx = PlayIdx-1;
         curStartIdx = PlayIdx+vPlayStartEnd(1);
-        vPageBuffer = -ones(1,nPageBufferSize);
-        strlen = 0;
+        vPageBuffer = -ones(1,globsetnPageBufferSize);
+%         strlen = 0;
         while bIsPlayingFlag
-            htic = tic;
+%             htic = tic;
             
             %% Redrawing the Interface
             
-            if iRedrawCounter == iUpdateInterval && vPageBuffer(1) ~= -1                
+            if iRedrawCounter == globsetiUpdateInterval && vPageBuffer(1) ~= -1                
                 
                 iRedrawCounter = 0;
                 
@@ -1410,7 +1416,7 @@ init();
                 iRedrawCounter = iRedrawCounter+1;
             end
             
-            if iRedrawCounter > iUpdateInterval
+            if iRedrawCounter > globsetiUpdateInterval
                 iRedrawCounter = 0;
             end
 
@@ -1418,13 +1424,13 @@ init();
             %% Actual Playback actions
             
             % Handle end of playback section first if occurs: needs zeropadding
-            if vPlayStartEnd(1)+PlayIdx+iBlockLen-1 > vPlayStartEnd(2)
+            if vPlayStartEnd(1)+PlayIdx+globsetiBlockLen-1 > vPlayStartEnd(2)
                 
                 % End of playback section is reached. Set flag.
                 bIsEndOfWaveFlag = 1;
                 
                 % For left over samples: generate ZeroPadded block
-                OutZP = zeros(iBlockLen, numChannels);
+                OutZP = zeros(globsetiBlockLen, numChannels);
                 
                 if bUseAudioread
                      curBlock = audioread(szFileName, ...
@@ -1452,11 +1458,11 @@ init();
                 if bUseAudioread
                     curBlock = audioread(szFileName, ...
                         [curStartIdx ...
-                        curStartIdx+iBlockLen-1]);
+                        curStartIdx+globsetiBlockLen-1]);
                 else
                     curBlock = wavread(szFileName, ...
                         [curStartIdx ...
-                        curStartIdx+iBlockLen-1]); %#ok
+                        curStartIdx+globsetiBlockLen-1]); %#ok
                 end
                 maOutBlock = RoutingAndMuting(curBlock);
                 
@@ -1464,33 +1470,31 @@ init();
                 
                 
                 
-                PlayIdx = PlayIdx+iBlockLen-1;
+                PlayIdx = PlayIdx+globsetiBlockLen-1;
                 curStartIdx = PlayIdx+vPlayStartEnd(1);
                 
             end
             
             % Block until the first frame in buffer has been processed
-            ticblock = tic;
+%             ticblock = tic;
             playrec('block', vPageBuffer(1));
-            tblock = toc(ticblock);
+%             tblock = toc(ticblock);
             
             % Clear old buffer frame and add an empty one
             vPageBuffer = [vPageBuffer(2:end) -1];
             
             % Adapt buffer size (might have changed in settings)
-            while vPageBuffer > nPageBufferSize+1
+            while vPageBuffer > globsetnPageBufferSize+1
                 vPageBuffer = vPageBuffer(2:end);
             end
             
-%             % Adapt block length (might have changed in settings)
-%             if curBlockSize ~= 
-            htic = toc(htic);
-            fprintf(repmat('\b', 1, strlen));
-            strlen = fprintf('%8.5fs', htic-tblock);
-            
-            if htic-tblock >= iBlockLen/fs
-                strlen = strlen + fprintf('!!!');
-            end
+%             htic = toc(htic);
+%             fprintf(repmat('\b', 1, strlen));
+%             strlen = fprintf('%8.5fs', htic-tblock);
+%             
+%             if htic-tblock >= globsetiBlockLen/fs
+%                 strlen = strlen + fprintf('!!!');
+%             end
             
         end
         
@@ -1563,8 +1567,6 @@ init();
 
         if bPlaySelectionFlag
             
-            
-            
             FrmBeg  = max([floor(vZoomPosition(1)*fs) 1]);
             FrmEnd  = floor((vZoomPosition(1)+vZoomPosition(3))*fs);
             
@@ -1572,9 +1574,6 @@ init();
         else
             vPlayStartEnd = [1 vWaveSize(1)];
         end
-        
-        
-       
         
         bIsPlayingFlag = 1;
         bIsPausedFlag  = 0;
@@ -1829,8 +1828,30 @@ init();
         end
         
         playrec('init', fs, globsetOutputID, -1, ...
-            numOutputs, [],iBlockLen);
+            numOutputs, [],globsetiBlockLen);
     end
+
+%% Set a new windows ResizeFcn while preserving the old 
+hPrevResizeFcn = get(hFigure, 'ResizeFcn');
+set(hFigure, 'ResizeFcn', @InternalResizeFunction);
+
+    function InternalResizeFunction(obj, evd)
+       
+        if bIsStandalone
+            % Gather the current figure size and save it
+            vFigPos = get(obj, 'Position');
+            guiSize = vFigPos(3:4);
+            save(szSaveFile, 'globset*', 'gui*', '-mat')
+        end
+        
+        if ~isempty(hPrevResizeFcn) && ~strcmpi(get(obj, 'tag'), 'new')
+            hPrevResizeFcn();
+        elseif strcmpi(get(obj, 'tag'), 'new')
+            set(obj, 'tag', '');
+        end
+        
+    end
+
 
 end
 
