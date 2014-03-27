@@ -202,6 +202,7 @@ vStartEndVal    = [];
 caOrigSpectrData= {};
 maOrigSpectrData= [];
 routingMatrix   = [];
+routingMatrixDisplay = [];
 stDevices       = [];
 vChanMap        = [];
 numOutputs      = [];
@@ -908,7 +909,7 @@ init();
             %% Beautifying: Centering the routing matrix
             set(hFigure,'Units','pixels');
             vFigSze = get(hFigure, 'Position');
-            auxSize = [...
+            auxFigSize = [...
                 vFigSze(3:4)/2-auxSize(1:2)/2+vFigSze(1:2) ...
                 auxSize(1:2)];
             
@@ -917,7 +918,7 @@ init();
                 'Name', 'Routing Matrix', ...
                 'NumberTitle', 'off', ...
                 'Resize', 'off', ...
-                'Position', auxSize, ...
+                'Position', auxFigSize, ...
                 'Color', guiBackgroundColor);
             
             set(hRoutingPanel,'toolbar','none')
@@ -934,7 +935,7 @@ init();
             
             uitable(...
                 'Parent', hPanel, ...
-                'Data', routingMatrix, ...
+                'Data', routingMatrixDisplay, ...
                 'Units', 'normalized', ...
                 'Position', [0.05 0.05 0.9 0.9], ...
                 'CellEditCallback', @cellEditCB, ...
@@ -944,7 +945,14 @@ init();
         
         %% - - Callback on user editing the routing matrix
         function cellEditCB(Object, ~, ~)
-            routingMatrix = get(Object, 'Data');
+            
+            % Read data, max-out at +3dB FS and write it back
+            maMatrixValues = get(Object, 'Data');
+            maMatrixValues(maMatrixValues>+3) = +3;
+            set(Object, 'Data', maMatrixValues);
+            
+            % Write the data to the actual routing matrix
+            routingMatrix = 10.^(maMatrixValues/10);
             
         end
         
@@ -1685,6 +1693,10 @@ init();
         numOutputs = stDevices([stDevices.deviceID]==devID).outputChans;
         vChanMap   = 1:numOutputs;
         routingMatrix = eye(numChannels, numOutputs);
+        routingMatrixDisplay = routingMatrix;
+        
+        routingMatrixDisplay(routingMatrix==0) = -inf;
+        routingMatrixDisplay(routingMatrix==1) = 0;
         
     end
 
