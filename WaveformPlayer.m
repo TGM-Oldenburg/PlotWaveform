@@ -613,10 +613,10 @@ init();
         
         %% Generate player controls
         icons.stop = zeros(iIconSize,iIconSize,3);
-        icons.play = 0.941.*ones(iIconSize,iIconSize,3);
+        icons.play = NaN*ones(iIconSize,iIconSize,3);
         icons.pause = zeros(iIconSize,iIconSize,3);
         icons.pause(:, ceil(iIconSize/2.6) : ...
-            iIconSize-floor(iIconSize/2.6), :) = .941;
+            iIconSize-floor(iIconSize/2.6), :) = NaN;
         
         for count = 1:iIconSize/2
             icons.play(count,1:2*count,1) = zeros(1,2*count);
