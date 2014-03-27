@@ -132,6 +132,12 @@ myColorsetFace = [0.4 0.4 1; 1 0.4 0.4; 0.75 0.75 0.5; 0.5 0.75 0.5; ...
     0.75 0.3 0.75; 0.3 0.75 0.75; 0.5 0.5 0.5; 0.2 0.2 0.2];
 myColorsetEdge = [0.2 0.2 0.2];
 
+% setting threshold for the maximum number of samples to be loaded into memory
+iReadinBlockwiseThreshold = 20000000;
+% In Matlab, 20.000.000 samples (not meaning frames, but mono-channel samples)
+% account to roughly 150-200MB in memory usage increase, which should be
+% appropriate for most use cases and speeds up plot-buildup time quite a lot
+
 % setting threshold below which the WAVE is plotted sample-exact
 iPlotBlockwiseThreshold = 16384;
 
@@ -166,7 +172,7 @@ bReplotOriginalValuesFlag = 0;
 bAutoAdjustYAxisFlag = 0;
 fs = [];
 FileSize = [];
-UnterBlocks = 0;
+iNumUnterBlocks = 0;
 StartEndVal = [];
 OrigStartEndVal= [];
 plotWidth = [];
@@ -185,7 +191,7 @@ hParent = [];
 AxesToUse = [];
 myPostZoomAction = @NOP;
 iZoomMode = 2;
-iVerbose = 0;
+iVerbose = 1;
 progVerb = [];
 
 [~,szReleaseDate]   = version;
@@ -331,7 +337,7 @@ numColorsEdge = size(myColorsetEdge,1);
 
 SampleValuesPos = [];
 SampleValuesNeg = [];
-numSamples = 0;
+iNumSamples = 0;
 myZoomMenu = uicontextmenu;
 ChannelViewSet();
 
@@ -410,84 +416,145 @@ end
             end
             
             %Getting Num of Samples to be processed
-            numSamples = iLastSample-iFirstSample;
+            iNumSamples = iLastSample-iFirstSample;
            
             
             SampleValuesPos = 0;
             bPlotBlockwiseFlag = 1;
             bPlotWithMarkersFlag = 0;
-           
-            numSamplesToDisplay = numSamples;
-                       
-            indBlocks = [iFirstSample iFirstSample+numSamplesToDisplay];
             
-            SamplesPerPixel = ceil(numSamples/plotWidth);
+            SamplesPerPixel = ceil(iNumSamples/plotWidth);
             
-            MaxCompLen = SamplesPerPixel;
+            iNumUnterBlocks = floor(iNumSamples/SamplesPerPixel);
             
-            UnterBlocks = floor(numSamplesToDisplay/MaxCompLen);
-      
+            iNumBlocksToReadin = ceil(iNumUnterBlocks * ...
+                (iReadinBlockwiseThreshold/(iNumSamples*2)));
+            iNumUnterReadins = ceil(iNumUnterBlocks/iNumBlocksToReadin);
             
-            SampleValuesPos = zeros(UnterBlocks,numChannels);
-            SampleValuesNeg = zeros(UnterBlocks,numChannels);
+            SamplesPerReadin = iNumBlocksToReadin*SamplesPerPixel;
+            
+            vSampleInterval = [iFirstSample iFirstSample+iNumUnterBlocks*SamplesPerPixel-1];
+            
+            SampleValuesPos = zeros(iNumUnterBlocks,numChannels);
+            SampleValuesNeg = zeros(iNumUnterBlocks,numChannels);
             
             if iVerbose;
                 progVerb(sprintf('%d pixels plot width', ...
                     plotWidth), 'info');                    %#ok
                 progVerb(sprintf('%d samples (input)', ...
-                    numSamples), 'info');                   %#ok
-                progVerb(sprintf('%d samples (output)', ...
-                    numSamplesToDisplay), 'info');          %#ok
+                    iNumSamples), 'info');                   %#ok
                 progVerb(sprintf('%d sublocks', ...
-                    UnterBlocks), 'info');                  %#ok
+                    iNumUnterBlocks), 'info');                  %#ok
             end
 
-            
-            if  numSamplesToDisplay > iPlotBlockwiseThreshold
-                if iVerbose; progVerb(...
-                        'Blockwise read-in', 1, UnterBlocks); end %#ok
+            % If data could be read completely
+            if  (iNumUnterReadins == 1 || ~bIsWavFileFlag) ...
+                    && iNumSamples > iPlotBlockwiseThreshold ...
                 
-                for mm = 1:UnterBlocks
-                    if iVerbose; progVerb(mm); end %#ok
-                    
-                    if bIsWavFileFlag
-                        if bUseAudioread
-                            curBlock = audioread(szFileNameOrData, ...
-                                [(mm-1)*MaxCompLen+ indBlocks(1) ...
-                                mm   *MaxCompLen+(indBlocks(1)-1)]);
-                        else
-                            curBlock = wavread(szFileNameOrData, ...
-                                [(mm-1)*MaxCompLen+ indBlocks(1) ...
-                                mm   *MaxCompLen+(indBlocks(1)-1)]);
-                        end
-                    else
-                        curBlock = wavData(...
-                            (mm-1)*MaxCompLen+ indBlocks(1):...
-                            mm   *MaxCompLen+(indBlocks(1)-1),:);
-                    end
-                    
-                    
-                    SampleValuesPos(mm,:) = ...
-                        (max( ...
-                        curBlock));
-                    SampleValuesNeg(mm,:) = ...
-                        (min( ...
-                        curBlock));
-                end
-            else
-                if iVerbose; progVerb('Discrete read-in', 1, 2); end %#ok
+                
+                
+                if iVerbose; progVerb(...
+                        'Complete read-in', 'info'); end %#ok
 
+                % Read-in the complete chunk
                 if bIsWavFileFlag
                     if bUseAudioread
-                        SampleValuesPos = audioread(szFileNameOrData,indBlocks);
+                        curData = audioread(szFileNameOrData, vSampleInterval);
                     else
-                        SampleValuesPos = wavread(szFileNameOrData,indBlocks);
+                        curData = wavread(szFileNameOrData, vSampleInterval);
                     end
                 else
-                    SampleValuesPos = wavData(indBlocks(1):indBlocks(2),:);
+                    curReadin = wavData(idxReadin(1):idxReadin(2),:);
                 end
                 
-                if iVerbose; progVerb(2); end %#ok
+                if iVerbose; progVerb(...
+                        'Blockwise calculation', 1, iNumUnterBlocks); end %#ok
+                
+                % Init-set sample index
+                idxProcess = 1:SamplesPerPixel;
+                    
+                for mm = 1:iNumUnterBlocks
+                    if iVerbose; progVerb(mm); end %#ok
+                    
+                    curBlock = curData(idxProcess);
+                    
+                    % Calculate plotting values
+                    SampleValuesPos(mm,:) = max(curBlock);
+                    SampleValuesNeg(mm,:) = min(curBlock);
+                    
+                    idxProcess = idxProcess+SamplesPerPixel;
+                end
+                
+            elseif bIsWavFileFlag && iNumUnterReadins > 1
+                
+                if iVerbose; progVerb(...
+                        'Blockwise read-in', 1, iNumUnterBlocks+1); end %#ok
+                if iVerbose; progVerb(1); end %#ok
+                
+                % Some counter/index variables
+                iNumBlocksDone = 0;
+                numBlocksNextReadin = iNumBlocksToReadin;
+                idxReadin = [iFirstSample iFirstSample+SamplesPerReadin];
+                
+                for kk = 1:iNumUnterReadins
+                    
+                    % Read-in current chunk of multiple block
+                    if bIsWavFileFlag
+                        if bUseAudioread
+                            curReadin = audioread(szFileNameOrData, idxReadin);
+                        else
+                            curReadin = wavread(szFileNameOrData, idxReadin);
+                        end
+                    end
+                    
+                    % Increase sample index
+                    idxReadin = idxReadin+SamplesPerReadin;
+                    
+                    % In the last read-in, index is on the last sample
+                    if idxReadin(2) > vSampleInterval(2)
+                        idxReadin(2) = vSampleInterval(2);
+                    end
+                    
+                    % Init-set sample index
+                    idxProcess = 1:SamplesPerPixel;
+                    
+                    for mm = 1:numBlocksNextReadin
+                        if iVerbose; progVerb(iNumBlocksDone+mm+1); end %#ok
+                        
+                        % Hand over current block
+                        curBlock = curReadin(idxProcess);
+                        
+                        % Calculate plotting values
+                        SampleValuesPos(iNumBlocksDone+mm,:) = max(curBlock);
+                        SampleValuesNeg(iNumBlocksDone+mm,:) = min(curBlock);
+                        
+                        % Increase sample index
+                        idxProcess = idxProcess+SamplesPerPixel;
+                    end
+                    
+                    % Increase blocks that have already been processed
+                    iNumBlocksDone = iNumBlocksDone+iNumBlocksToReadin;
+                    
+                    % Set number of blocks in the next read-in
+                    numBlocksNextReadin = min(...
+                        [iNumUnterBlocks-iNumBlocksDone iNumBlocksToReadin]);
+                end
+            else
+                if iVerbose; progVerb('Discrete read-in', 'info'); end %#ok
+                
+                if bIsWavFileFlag
+                    if bUseAudioread
+                        SampleValuesPos = audioread(szFileNameOrData, ...
+                            vSampleInterval);
+                    else
+                        SampleValuesPos = wavread(szFileNameOrData, ...
+                            vSampleInterval);
+                    end
+                else
+                    SampleValuesPos = wavData(...
+                        vSampleInterval(1):vSampleInterval(2),:);
+                end
+                
             end
             
             if bAlphaBlendFlag == 1;
@@ -512,7 +579,7 @@ end
                 OrigStartEndVal(4) = StartEndVal(4);
             end
 
-            if  numSamplesToDisplay <= iPlotBlockwiseThreshold
+            if  iNumSamples <= iPlotBlockwiseThreshold
                 bPlotBlockwiseFlag = 0;
                 if isempty(bOrigPlotBlockwiseFlag)
                     bOrigPlotBlockwiseFlag = bPlotBlockwiseFlag;
@@ -522,7 +589,7 @@ end
                     bOrigAlphaBlendOn = bAlphaBlendOn;
                 end
                 
-                if numSamplesToDisplay <= iPlotMarkersThreshold
+                if iNumSamples <= iPlotMarkersThreshold
                     bPlotWithMarkersFlag = 1;
                     if isempty(bOrigPlotWithMarkersFlag)
                         bOrigPlotWithMarkersFlag = bPlotWithMarkersFlag;
@@ -535,14 +602,14 @@ end
                 end
             end
         else
-            numSamples = OrigNumSamples;
+            iNumSamples = OrigNumSamples;
         end
         plotData;
         
         
         if iVerbose
             T = toc;
-            progVerb(sprintf('%.2f seconds of displayed wave data', numSamples/fs), ...
+            progVerb(sprintf('%.2f seconds of displayed wave data', iNumSamples/fs), ...
                 'info'); %#ok
             progVerb(sprintf('%.2f seconds in total to process.\n', T), ...
                 'info'); %#ok
@@ -587,7 +654,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
         OrigSampleValuesNeg = SampleValuesNeg;
         end 
         if isempty(OrigNumSamples)
-            OrigNumSamples = numSamples;
+            OrigNumSamples = iNumSamples;
         end
         timeVec = linspace(StartEndVal(1), ...
             StartEndVal(2), ...
@@ -608,7 +675,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
                 if bPlotWithMarkersFlag == 1
                     switch bSampleViewStyleFlag
                         case 0
-                            if UnterBlocks*4<plotWidth
+                            if iNumUnterBlocks*4<plotWidth
                                 stem(timeVec, ...
                                     SampleValuesPos(:,channel), ...
                                     'Color', myColorsetFace(mod ...
