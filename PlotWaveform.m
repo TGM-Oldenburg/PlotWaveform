@@ -687,7 +687,7 @@ myReadAndComputeMaxData = @ReadAndComputeMaxData;
     function SetOriginalZoom(~, ~)
         StartEndVal = OrigStartEndVal;
         bReplotOriginalValuesFlag = 1;
-        ReadAndComputeMaxData();
+        ReadAndComputeMaxData([],[],1);
         bReplotOriginalValuesFlag = 0;
         if ~isempty(myPostZoomAction)
             myPostZoomAction(StartEndVal);
