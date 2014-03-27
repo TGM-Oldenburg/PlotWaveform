@@ -1549,9 +1549,11 @@ init();
                 end
             end
         else
-            for out=1:numOutputs
-                ProcessingBlockRouted(:, out) = ProcessingBlock(:, out);
-            end
+            % If routing is disabled write to all outputs
+            ProcessingBlockRouted = repmat(ProcessingBlock, ...
+                1, ceil(numOutputs/numChannels));
+            
+            ProcessingBlockRouted = ProcessingBlockRouted(:, 1:numOutputs);
         end
         
         ProcessingBlock = ProcessingBlockRouted;
