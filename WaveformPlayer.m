@@ -725,12 +725,13 @@ init();
             'HorizontalAlign', 'left')   
         
         %% update GUI with new start and end time
-        szSelectionStart = sprintf('%8.3f s', ...
-            vZoomPosition(1));
+        szSelectionStart = sprintf('%.0f:%06.3f ', ...
+            vZoomPosition(1)/60, rem(vZoomPosition(1),60));
         szCurrentPos = szSelectionStart;
         
-        szSelectionEnd   = sprintf('%8.3f s', ...
-            vZoomPosition(1)+vZoomPosition(3));
+        szSelectionEnd   = sprintf('%.0f:%06.3f ', ...
+            (vZoomPosition(1)+vZoomPosition(3))/60, ...
+            rem((vZoomPosition(1)+vZoomPosition(3)), 60));
         
         %% Display current values
         handles.hValueSelectionStart = uicontrol(...
@@ -1408,7 +1409,8 @@ init();
                 else
                     CurrentPos   = PlayIdx/fs;
                 end
-                szCurrentPos = sprintf('%8.3f s',CurrentPos);
+                szCurrentPos = sprintf('%.0f:%06.3f ',CurrentPos/60, ...
+                    rem(CurrentPos, 60));
                 
                 set(handles.hValueCurrentPos, ...
                     'String', szCurrentPos);
@@ -1521,8 +1523,9 @@ init();
             set(handles.hPBStop,     'Enable', 'off')
 
             
-            szCurrentPos = sprintf('%8.3f s', ...
-                vZoomPosition(1)+vZoomPosition(3));
+            szCurrentPos = sprintf('%.0f:%06.3f ', ...
+                (vZoomPosition(1)+vZoomPosition(3))/60, ...
+                rem(vZoomPosition(1)+vZoomPosition(3),60));
             
             set(handles.hValueCurrentPos, ...
                 'String', szCurrentPos)
@@ -1594,7 +1597,7 @@ init();
        else
            CurrentPos   = PlayIdx/fs;
        end
-       szCurrentPos = sprintf('%8.3f',CurrentPos);
+       szCurrentPos = sprintf('%.0f:06.3f ',CurrentPos/60, rem(CurrentPos,60));
        
        set(handles.hValueCurrentPos, ...
            'String', szCurrentPos)
@@ -1768,10 +1771,11 @@ init();
         end
         
         % update GUI with new start and end time
-        szSelectionStart = sprintf('%8.3f s', ...
-            vZoomPosition(1));
-        szSelectionEnd   = sprintf('%8.3f s', ...
-            vZoomPosition(1)+vZoomPosition(3));
+        szSelectionStart = sprintf('%.0f:%06.3f ', ...
+            vZoomPosition(1)/60, rem(vZoomPosition(1),60));
+        szSelectionEnd   = sprintf('%.0f:%06.3f ', ...
+            (vZoomPosition(1)+vZoomPosition(3))/60, ...
+            rem(vZoomPosition(1)+vZoomPosition(3),60));
 
         set(handles.hValueSelectionStart, ...
             'String', szSelectionStart)
