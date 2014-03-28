@@ -852,7 +852,9 @@ init();
             end
         end
         
-        if isempty(globsetOutputID)
+        if isempty(globsetOutputID) ...
+                || globsetOutputID > max([stDevices.deviceID]) ...
+                || globsetOutputID < min([stDevices.deviceID])
             globsetOutputID = stDevices(defaultIDidx).deviceID;
         end
         
