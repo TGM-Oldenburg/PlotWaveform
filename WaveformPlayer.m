@@ -833,6 +833,8 @@ init();
         stDevices = playrec('getDevices');
         stDevices = stDevices([stDevices.outputChans]>0);
         
+        
+        if ~isempty(stDevices)
         % Set the default output to the first available device
         defaultIDidx = 1;
         
@@ -879,6 +881,7 @@ init();
             
         end
         
+        
         uimenu(...
                 handles.hMenubarInterface, ...
                 'Label', 'Modify ...', ...
@@ -887,7 +890,16 @@ init();
                 'Separator', 'on');
         
         getNumberOfOutputs(globsetOutputID);
+        else
+            % If there is no output device present, deactivate playback
+            globsetOutputID = [];
         
+            hDevicesInMenu = uimenu(...
+                handles.hMenubarInterface, ...
+                'Label', '<No Audio Devices detected>');
+            
+            set(handles.hPBPlay, 'Enable', 'off');
+        end
         
         %% - Menubar: Channel Routing Entry
         
@@ -1355,9 +1367,6 @@ init();
             
         end
         
-        %% Get playrec going
-        playrecInit; 
-        
     end
 
 
@@ -1390,13 +1399,17 @@ init();
 %% Function called while playing is activated
     function whilePlaying()
 
+        if ~playrec('isInitialised');
+           playrecInit; 
+        end
+        
         % Generate indices and page buffer
         PlayIdx = PlayIdx-1;
         curStartIdx = PlayIdx+vPlayStartEnd(1);
         vPageBuffer = -ones(1,globsetnPageBufferSize+1);
-%         strlen = 0;
+
         while bIsPlayingFlag
-%             htic = tic;
+
             
             %% Redrawing the Interface
             
