@@ -1241,11 +1241,13 @@ init();
             
             switch szTag
                 case 'buffersize'
-                    globsetnPageBufferSize = get(obj, 'Value');
+                    globsetnPageBufferSize = round(get(obj, 'Value'));
                     set(handles.szBuffersize, 'String', num2str(globsetnPageBufferSize));
+                    set(obj, 'Value', globsetnPageBufferSize);
                 case 'updateint'
-                    globsetiUpdateInterval = get(obj, 'Value');
+                    globsetiUpdateInterval = round(get(obj, 'Value')):
                     set(handles.szUpdateInterval, 'String', num2str(globsetiUpdateInterval));
+                    set(obj, 'Value', globsetnPageBufferSize);
                 case 'blocklen'
                     globsetiBlockLen = vBlocksizeVals(get(obj, 'Value'));
                     set(handles.szBlockLen, 'String', num2str(globsetiBlockLen));
