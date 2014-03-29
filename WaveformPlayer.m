@@ -1245,7 +1245,7 @@ init();
                     set(handles.szBuffersize, 'String', num2str(globsetnPageBufferSize));
                     set(obj, 'Value', globsetnPageBufferSize);
                 case 'updateint'
-                    globsetiUpdateInterval = round(get(obj, 'Value')):
+                    globsetiUpdateInterval = round(get(obj, 'Value'));
                     set(handles.szUpdateInterval, 'String', num2str(globsetiUpdateInterval));
                     set(obj, 'Value', globsetnPageBufferSize);
                 case 'blocklen'
