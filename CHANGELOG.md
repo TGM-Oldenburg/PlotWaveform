@@ -1,10 +1,26 @@
 # PLOTWAVEFORM Changelog
 
+## v2.1 (03-Apr-2014)
+
+* [PWF] Drastically improved the performance of PlotWaveform's data read-in. The processing is now "block-in-block", meaning only a slightly increased memory consumption as the drawback for amazing read-in times. As a benchmark, I tested a 6 hour wavefile, which was read in  under 40 seconds. 
+
+* [WFP] Much better buffer handling of Playrec internally.
+
+* [WFP] Added a settings panel in the Menubar (Audio -> Modify ...) to manipulate basic parameters of Playrec audio. For example, if the playback is dropping samples, increase the blocksize or GUI update interval.
+
+* [WFP] Restored the broken functionality of the settings file for figure and audio settings in the player. If the function is called on its own (not integrated in another script's figure), the figure size and audio settings are kept til next opening.
+
+[Commits](../../compare/2.0...2.1)
+
+
 ## v2.0 (26-Mar-2014)
 
 * [WFP] Swapped Msound with [Playrec](https://github.com/Janwillhaus/playrec) and removed the binaries from this repository. With Playrec in Matlab path you'll now be able to use the playback functionality of the WaveformPlayer even on Macintosh! Make sure to get the most recent binaries of Playrec: https://github.com/Janwillhaus/playrec/releases/latest
 
 * [WFP] [PWF] Moved the older changelogs from inside the function headers into CHANGELOG.md's bottom. WFP and PWF shall from now on use the same version number, making it more of a bundle's version number.
+
+[Commits](../../compare/1.1...2.0)
+
 
 ## v1.1 (20-Mar-2014)
 
@@ -14,6 +30,9 @@
 
 + Support for the new `audioread()` function that was introduced to MATLAB. Thus Plotwaveform supports many more audio formats on newer MATLAB releases. Support for wavread is still present for older releases.
 
+[Commits](../../compare/1.0...1.1)
+
+
 ## v1.0 (06-Sep-2013)
 
 * Major release!
@@ -21,6 +40,9 @@
 + Finally added support for block-processing of wav read-in. PWF is now extremely fast in working with huge files; 1GB of wave can easily be loaded in about 15 seconds, while staying low in memory consumption.
 
 + Additional info: future versioning info will be placed inside the CHANGELOG.md file included in the repo. That way it is  easier to handle the multiple functions of the bundle. Cheers!
+
+[Commits](../../compare/7b8ded3...1.0)
+
 
 ***
 *Quoted below is the version history before moving it to CHANGELOG.md (in its original, but reversed order)*

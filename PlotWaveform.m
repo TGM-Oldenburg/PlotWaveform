@@ -464,7 +464,7 @@ end
                         curData = wavread(szFileNameOrData, vSampleInterval);
                     end
                 else
-                    curReadin = wavData(idxReadin(1):idxReadin(2),:);
+                    curData = wavData(vSampleInterval(1):vSampleInterval(2),:);
                 end
                 
                 if iVerbose; progVerb(...
