@@ -167,10 +167,10 @@ guiColormapDef      =   'jet';
 guiBackgroundColor  = [ 229/255 229/255 229/255];       % light grey
 guiSize             = [ 800 600];
 auxSize             = [ 400 300];
+% guiControlPanelSize = [ ];
 
 %% Set global settings
 szSaveFileTitle = 'WaveformPlayer.ini';
-iBlockLen       = 4096;
 iWinMin         = 256;
 iWinDef         = 2048;
 iWinMax         = 8192;
@@ -178,16 +178,19 @@ iNFFTMin        = 256;
 iNFFTDef        = 512;
 iNFFTMax        = 8192;
 iIconSize       = 24;
-globsetOutputID = 0;
-
+globsetOutputID = [];
+vBlocksizeVals  = 2.^(8:15);
 % Setting the default audio interface (os-specific)
 szDefaultDeviceMac = 'Built-In Output';
 szDefaultDeviceWin = 'Microsoft Soundmapper - Output';
 szDefaultDeviceLin = '';
 
 
-nPageBufferSize = 1;
-iUpdateInterval = 0;
+globsetnPageBufferSize = 5;
+globsetiUpdateInterval = 5;
+vPageBufferSizeInterval     = [0 50];
+vUpdateIntervalInterval     = [0 50];
+globsetiBlockLen       = 1024;
 
 
 %% Set global variables
@@ -202,6 +205,7 @@ vStartEndVal    = [];
 caOrigSpectrData= {};
 maOrigSpectrData= [];
 routingMatrix   = [];
+routingMatrixDisplay = [];
 stDevices       = [];
 vChanMap        = [];
 numOutputs      = [];
@@ -220,6 +224,7 @@ bIsPausedFlag       = 0;
 bCalcSpectogram     = 1;
 bRoutingEnabled     = 1;
 bWaveDisplayType    = 1;
+bIsStandalone       = 1;
 
 %% Create empty handles
 handles         = [];
@@ -232,6 +237,7 @@ hWavePos        = [];
 hDataToggle     = [];
 hSpectrograms   = [];
 hParentFig      = [];
+hRoutingPanel   = [];
 
 myPostZoomReturnStartEnd    = [];
 myPostSlideAction           = [];
@@ -296,23 +302,6 @@ caLeftoverParams = processInputParameters(varargin);
     end
 
 
-caParentDef{1} = 'Axes';
-
-if ~isempty(hParentFig)
-    hAxes = axes('Parent', hParentFig);
-    
-else
-    hParentFig      = figure;
-    hAxes           = axes('Parent', hParentFig);
-
-    %% Retrieve screensize and center position
-    set(0,'Units','pixels');
-    vScrSze = get(0,'screensize');
-    guiSize = [vScrSze(3:4)/2-guiSize(1:2)/2 guiSize(1:2)];
-end
-
-caParentDef{2} = hAxes;
-
 caFuncPath = which('WaveformPlayer.m', '-all');
 szFuncPath = fileparts(caFuncPath{1});
 szSaveFile   = [szFuncPath   filesep     szSaveFileTitle];
@@ -320,7 +309,25 @@ szSaveFile   = [szFuncPath   filesep     szSaveFileTitle];
 if exist(szSaveFile,'file')
     load(szSaveFile, '-mat')
 end
-save(szSaveFile, 'globset*', 'gui*', '-mat')
+
+
+caParentDef{1} = 'Axes';
+
+if ~isempty(hParentFig)
+    set(hParentFig, 'Tag', 'new')
+    hAxes = axes('Parent', hParentFig);
+    bIsStandalone = 0;
+else
+    %% Retrieve screensize and center position
+    set(0,'Units','pixels');
+    vScrSze = get(0,'screensize');
+    guiSize = [vScrSze(3:4)/2-guiSize(1:2)/2 guiSize(1:2)];
+    
+    hParentFig      = figure('Tag', 'new', 'Position', guiSize);
+    hAxes           = axes('Parent', hParentFig);
+end
+
+caParentDef{2} = hAxes;
 
 set(hAxes, ...
     'units', 'normalized', ...
@@ -349,13 +356,13 @@ end
     numChannels, ...
     ReadAndComputeMaxData, ...
     vWaveSize, fs] = PlotWaveform(szFileName, ...
+    caLeftoverParams{:}, ...
     'ShowXAxisAbove', 1, ...
     'PostZoomAction', myPostZoomAction, ...
     'ColorsetFace',   myColorsetFace, ...
     'ColorsetEdge',   myColorsetEdge, ...
     'ChannelView', 1, ...
     'ZoomMode', 2, ...
-    caLeftoverParams{:}, ...
     caParentDef{:});
 
 vStartEndVal = [...
@@ -722,12 +729,13 @@ init();
             'HorizontalAlign', 'left')   
         
         %% update GUI with new start and end time
-        szSelectionStart = sprintf('%8.3f s', ...
-            vZoomPosition(1));
+        szSelectionStart = sprintf('%.0f:%06.3f ', ...
+            vZoomPosition(1)/60, rem(vZoomPosition(1),60));
         szCurrentPos = szSelectionStart;
         
-        szSelectionEnd   = sprintf('%8.3f s', ...
-            vZoomPosition(1)+vZoomPosition(3));
+        szSelectionEnd   = sprintf('%.0f:%06.3f ', ...
+            (vZoomPosition(1)+vZoomPosition(3))/60, ...
+            rem((vZoomPosition(1)+vZoomPosition(3)), 60));
         
         %% Display current values
         handles.hValueSelectionStart = uicontrol(...
@@ -829,6 +837,8 @@ init();
         stDevices = playrec('getDevices');
         stDevices = stDevices([stDevices.outputChans]>0);
         
+        
+        if ~isempty(stDevices)
         % Set the default output to the first available device
         defaultIDidx = 1;
         
@@ -839,17 +849,22 @@ init();
             end
         elseif ispc
             specIDidx = strcmpi({stDevices.name}, szDefaultDeviceWin);
-            if amy(specIDidx)
+            if any(specIDidx)
                 defaultIDidx = specIDidx;
             end
         else
             specIDidx = strcmpi({stDevices.name}, szDefaultDeviceLin);
-            if amy(specIDidx)
+            if any(specIDidx)
                 defaultIDidx = specIDidx;
             end
         end
         
-        globsetOutputID = stDevices(defaultIDidx).deviceID;
+        if isempty(globsetOutputID) ...
+                || globsetOutputID > max([stDevices.deviceID]) ...
+                || globsetOutputID < min([stDevices.deviceID]) ...
+                || sum([stDevices.deviceID] == ~globsetOutputID) == 0
+            globsetOutputID = stDevices(defaultIDidx).deviceID;
+        end
         
         % run through input devices, put IDs and name into menubar
         hDevicesInMenu = zeros(1, length(stDevices));
@@ -870,8 +885,25 @@ init();
             
         end
         
-        getNumberOfOutputs(globsetOutputID);
         
+        uimenu(...
+                handles.hMenubarInterface, ...
+                'Label', 'Modify ...', ...
+                'Checked', 'off', ...
+                'Callback', @modifyAudioSettings, ...
+                'Separator', 'on');
+        
+        getNumberOfOutputs(globsetOutputID);
+        else
+            % If there is no output device present, deactivate playback
+            globsetOutputID = [];
+            
+            hDevicesInMenu = uimenu(...
+                handles.hMenubarInterface, ...
+                'Label', '<No Audio Devices detected>');
+            
+            set(handles.hPBPlay, 'Enable', 'off');
+        end
         
         %% - Menubar: Channel Routing Entry
         
@@ -897,43 +929,87 @@ init();
             %% Beautifying: Centering the routing matrix
             set(hFigure,'Units','pixels');
             vFigSze = get(hFigure, 'Position');
-            auxSize = [...
+            
+            FigureHeight = 300;
+            FigureWidth  = 300;
+            auxSize = [FigureWidth FigureHeight];
+            
+            
+            auxFigSize = [...
                 vFigSze(3:4)/2-auxSize(1:2)/2+vFigSze(1:2) ...
                 auxSize(1:2)];
+            
+            
+            try delete(hRoutingPanel) %#ok
+            end
+                
             
             %% Opening new figure
             hRoutingPanel = figure(...
                 'Name', 'Routing Matrix', ...
                 'NumberTitle', 'off', ...
                 'Resize', 'off', ...
-                'Position', auxSize, ...
+                'Position', auxFigSize, ...
                 'Color', guiBackgroundColor);
             
             set(hRoutingPanel,'toolbar','none')
             set(hRoutingPanel,'menubar', 'none')
             
+            
+            
+            
             hPanel = uipanel(...
                 'Parent', hRoutingPanel, ...
-                'Title', 'Routing Matrix', ...
-                'Units', 'normalized', ...
-                'Position', [0.05 0.05 0.9 0.9]);
+                'Units', 'pixels', ...
+                'Position', [15 70 270 220], ...
+                'BackgroundColor', guiBackgroundColor);
             
             
             editColumns = true(1,numChannels);
             
+            hPlacebo = axes( ...
+                'Parent', hPanel, ...
+                'Units', 'pixels', ...
+                'Position', [42 12 216 166], ...
+                'Color', guiBackgroundColor, ...
+                'XTickLabel', {}, ...
+                'YTickLabel', {}, ...
+                'XAxisLocation', 'top');
+            
+            ylabel(hPlacebo, 'Input (File)', 'FontSize', guiFontSize+1);
+            xlabel(hPlacebo, 'Output (Device)', 'FontSize', guiFontSize+1);
+            
+            
             uitable(...
                 'Parent', hPanel, ...
-                'Data', routingMatrix, ...
-                'Units', 'normalized', ...
-                'Position', [0.05 0.05 0.9 0.9], ...
+                'Data', routingMatrixDisplay, ...
+                'Units', 'pixels', ...
+                'Position', [40 10 220 170], ...
                 'CellEditCallback', @cellEditCB, ...
-                'ColumnEditable', editColumns);
+                'ColumnEditable', editColumns, ...
+                'ColumnWidth', repmat({30},1,size(routingMatrixDisplay,1)));
             
+            uicontrol('Style', 'text', ...
+                'Units', 'pixels', ...
+                'FontSize', guiFontSize, ...
+                'Position', [15 15 270 40], ...
+                'String', {...
+                'Use the above matrix to route audio from the ', ...
+                'wave file channels on the right to the audio ', ...
+                'device channels on the top. Values are in dB FS'}, ...
+                'BackgroundColor', guiBackgroundColor)
         end
         
         %% - - Callback on user editing the routing matrix
         function cellEditCB(Object, ~, ~)
-            routingMatrix = get(Object, 'Data');
+            
+            % Read data, max-out at +3dB FS and write it back
+            maMatrixValues = get(Object, 'Data');
+            maMatrixValues(maMatrixValues>+3) = +3;
+            set(Object, 'Data', maMatrixValues);
+            
+            % Write the data to the actual routing matrix
+            routingMatrix = 10.^(maMatrixValues/10);
             
         end
         
@@ -1072,6 +1148,190 @@ init();
            end
         end
         
+        
+        %% - - Callback on user modifying the audio settings
+        function modifyAudioSettings(~,~)
+            
+            
+            FigureHeight = 150;
+            FigureWidth  = 300;
+            auxSize = [FigureWidth FigureHeight];
+            
+            %% Beautifying: Centering figure to come
+            set(hFigure,'Units','pixels');
+            vFigSze = get(hFigure, 'Position');
+            auxFigSize = [...
+                vFigSze(3:4)/2-auxSize(1:2)/2+vFigSze(1:2) ...
+                FigureWidth FigureHeight];
+            
+            %% Building a new figure
+            hAudioSettingsPanel = figure(...
+                'Name', 'Audio Settings', ...
+                'NumberTitle', 'off', ...
+                'Resize', 'off', ...
+                'Position', auxFigSize, ...
+                'Color', guiBackgroundColor);
+            
+            set(hAudioSettingsPanel,'toolbar','none')
+            set(hAudioSettingsPanel,'menubar', 'none')
+            
+            hPanel = uipanel(...
+                'Parent', hAudioSettingsPanel, ...
+                'Title', 'Playback Settings', ...
+                'Units', 'normalized', ...
+                'Position', [0.02 0.05 0.96 0.9], ...
+                'BackgroundColor', guiBackgroundColor);
+            
+            %% Place sliders to modify high and low
+            
+               
+            [~, iCurSelection] = max(vBlocksizeVals==globsetiBlockLen);
+            
+            if isempty(iCurSelection )
+                iCurSelection = 1;
+            end
+            
+            uicontrol('Style', 'pushbutton',...
+                'Parent', hPanel, ...
+                'String','-', ...
+                'units', 'normalized', ...
+                'tag', 'buffersize_dec', ...
+                'Position', [0.35 0.66 0.1 0.15], ...
+                'Callback', @setNewAudioSettings);
+            
+            uicontrol('Style', 'pushbutton',...
+                'Parent', hPanel, ...
+                'String','+', ...
+                'units', 'normalized', ...
+                'tag', 'buffersize_inc', ...
+                'Position', [0.65 0.66 0.1 0.15], ...
+                'Callback', @setNewAudioSettings);
+            
+             uicontrol('Style', 'pushbutton',...
+                'Parent', hPanel, ...
+                'String','-', ...
+                'units', 'normalized', ...
+                'tag', 'updateint_dec', ...
+                'Position', [0.35 0.44 0.1 0.15], ...
+                'Callback', @setNewAudioSettings);
+            
+            uicontrol('Style', 'pushbutton',...
+                'Parent', hPanel, ...
+                'String','+', ...
+                'units', 'normalized', ...
+                'tag', 'updateint_inc', ...
+                'Position', [0.65 0.44 0.1 0.15], ...
+                'Callback', @setNewAudioSettings);
+            
+            
+         
+            uicontrol('Style', 'popupmenu',...
+                'Parent', hPanel, ...
+                'Value', iCurSelection, ...
+                'String', vBlocksizeVals, ...
+                'units', 'normalized', ...
+                'tag', 'blocklen', ...
+                'Position', [0.35 0.22 0.4 0.15], ...
+                'Callback', @setNewAudioSettings);
+            
+            
+            %% Label the "sliders"
+            uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', 'Buffer Size  ', ...
+                'units', 'normalized', ...
+                'Position', [0.02 0.66 0.30 0.14], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'right');
+            
+            uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', 'Update Interval  ', ...
+                'units', 'normalized', ...
+                'Position', [0.02 0.44 0.30 0.14], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'right');
+            
+            uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', 'Block Size  ', ...
+                'units', 'normalized', ...
+                'Position', [0.02 0.22 0.30 0.11], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'right');
+            
+            %% Show the current slider/depth values
+            handles.szBuffersize = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', num2str(globsetnPageBufferSize), ...
+                'units', 'normalized', ...
+                'Position', [0.80 0.66 0.15 0.14], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left');
+            
+            handles.szUpdateInterval = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', num2str(globsetiUpdateInterval), ...
+                'units', 'normalized', ...
+                'Position', [0.80 0.44 0.15 0.14], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left');
+            
+            handles.szBlockLen = uicontrol('Style', 'text', ...
+                'Parent', hPanel, ...
+                'String', num2str(globsetiBlockLen), ...
+                'units', 'normalized', ...
+                'Position', [0.80 0.22 0.15 0.11], ...
+                'BackgroundColor', guiBackgroundColor-0, ...
+                'HorizontalAlign', 'left');
+                
+        end
+    
+        
+        function setNewAudioSettings(obj,~)
+           
+            szTag = get(obj, 'tag');
+            
+            switch szTag
+                case 'buffersize_inc'
+                    globsetnPageBufferSize = min(...
+                        [globsetnPageBufferSize+1 vPageBufferSizeInterval(2)]);
+                    set(handles.szBuffersize, ...
+                        'String', num2str(globsetnPageBufferSize));
+                    set(obj, 'Value', globsetnPageBufferSize);
+                    
+                case 'buffersize_dec'
+                    globsetnPageBufferSize =  max(...
+                        [globsetnPageBufferSize-1 vPageBufferSizeInterval(1)]);
+                    set(handles.szBuffersize, ...
+                        'String', num2str(globsetnPageBufferSize));
+                    set(obj, 'Value', globsetnPageBufferSize);
+                    
+                case 'updateint_inc'
+                    globsetiUpdateInterval = min(...
+                        [globsetiUpdateInterval+1 vUpdateIntervalInterval(2)]);
+                    set(handles.szUpdateInterval, ...
+                        'String', num2str(globsetiUpdateInterval));
+                    set(obj, 'Value', globsetnPageBufferSize);
+                case 'updateint_dec'
+                    globsetiUpdateInterval = max(...
+                        [globsetiUpdateInterval-1 vUpdateIntervalInterval(1)]);
+                    set(handles.szUpdateInterval, ...
+                        'String', num2str(globsetiUpdateInterval));
+                    set(obj, 'Value', globsetnPageBufferSize);
+                    
+                case 'blocklen'
+                    globsetiBlockLen = vBlocksizeVals(get(obj, 'Value'));
+                    set(handles.szBlockLen, ...
+                        'String', num2str(globsetiBlockLen));
+                    playrecInit;
+            end
+            
+            save(szSaveFile, 'globset*', 'gui*', '-mat')
+            
+        end
+        
+        
         %% - - Callback on user modifying color map
         function modifyColormap(~,~,~)
         
@@ -1182,14 +1442,6 @@ init();
             
         end
         
-        %% Get playrec going
-        
-        if playrec('isInitialised')
-            playrec('reset');
-        end
-        playrec('init', fs, globsetOutputID, -1, ...
-            numOutputs, [],iBlockLen);
-        
     end
 
 
@@ -1222,17 +1474,23 @@ init();
 %% Function called while playing is activated
     function whilePlaying()
 
+        if ~playrec('isInitialised');
+           playrecInit; 
+        end
+        
         % Generate indices and page buffer
         PlayIdx = PlayIdx-1;
         curStartIdx = PlayIdx+vPlayStartEnd(1);
-        vPageBuffer = -ones(1,nPageBufferSize);
-        
+        vPageBuffer = -ones(1,globsetnPageBufferSize+1);
+
         while bIsPlayingFlag
-            
+
             
             %% Redrawing the Interface
             
-            if iRedrawCounter == iUpdateInterval
+            if iRedrawCounter == globsetiUpdateInterval ...
+                    && (vPageBuffer(1) ~= -1  || numel(vPageBuffer == 1))
+                
                 iRedrawCounter = 0;
                 
                 if bPlaySelectionFlag
@@ -1240,7 +1498,8 @@ init();
                 else
                     CurrentPos   = PlayIdx/fs;
                 end
-                szCurrentPos = sprintf('%8.3f s',CurrentPos);
+                szCurrentPos = sprintf('%.0f:%06.3f ',CurrentPos/60, ...
+                    rem(CurrentPos, 60));
                 
                 set(handles.hValueCurrentPos, ...
                     'String', szCurrentPos);
@@ -1259,18 +1518,22 @@ init();
             else
                 iRedrawCounter = iRedrawCounter+1;
             end
+            
+            if iRedrawCounter > globsetiUpdateInterval
+                iRedrawCounter = 0;
+            end
 
             
             %% Actual Playback actions
             
             % Handle end of playback section first if occurs: needs zeropadding
-            if vPlayStartEnd(1)+PlayIdx+iBlockLen-1 > vPlayStartEnd(2)
+            if vPlayStartEnd(1)+PlayIdx+globsetiBlockLen-1 > vPlayStartEnd(2)
                 
                 % End of playback section is reached. Set flag.
                 bIsEndOfWaveFlag = 1;
                 
                 % For left over samples: generate ZeroPadded block
-                OutZP = zeros(iBlockLen, numChannels);
+                OutZP = zeros(globsetiBlockLen, numChannels);
                 
                 if bUseAudioread
                      curBlock = audioread(szFileName, ...
@@ -1298,11 +1561,11 @@ init();
                 if bUseAudioread
                     curBlock = audioread(szFileName, ...
                         [curStartIdx ...
-                        curStartIdx+iBlockLen-1]);
+                        curStartIdx+globsetiBlockLen-1]);
                 else
                     curBlock = wavread(szFileName, ...
                         [curStartIdx ...
-                        curStartIdx+iBlockLen-1]); %#ok
+                        curStartIdx+globsetiBlockLen-1]); %#ok
                 end
                 maOutBlock = RoutingAndMuting(curBlock);
                 
@@ -1310,7 +1573,7 @@ init();
                 
                 
                 
-                PlayIdx = PlayIdx+iBlockLen-1;
+                PlayIdx = PlayIdx+globsetiBlockLen-1;
                 curStartIdx = PlayIdx+vPlayStartEnd(1);
                 
             end
@@ -1320,6 +1583,14 @@ init();
             
             % Clear old buffer frame and add an empty one
             vPageBuffer = [vPageBuffer(2:end) -1];
+            
+            % Adapt buffer size (might have changed in settings)
+            while numel(vPageBuffer) > globsetnPageBufferSize+1
+                vPageBuffer = vPageBuffer(2:end);
+            end
+            while numel(vPageBuffer) < globsetnPageBufferSize+1
+                vPageBuffer = [vPageBuffer -1]; %#ok
+            end
             
         end
         
@@ -1341,8 +1612,9 @@ init();
             set(handles.hPBStop,     'Enable', 'off')
 
             
-            szCurrentPos = sprintf('%8.3f s', ...
-                vZoomPosition(1)+vZoomPosition(3));
+            szCurrentPos = sprintf('%.0f:%06.3f ', ...
+                (vZoomPosition(1)+vZoomPosition(3))/60, ...
+                rem(vZoomPosition(1)+vZoomPosition(3),60));
             
             set(handles.hValueCurrentPos, ...
                 'String', szCurrentPos)
@@ -1374,9 +1646,11 @@ init();
                 end
             end
         else
-            for out=1:numOutputs
-                ProcessingBlockRouted(:, out) = ProcessingBlock(:, out);
-            end
+            % If routing is disabled write to all outputs
+            ProcessingBlockRouted = repmat(ProcessingBlock, ...
+                1, ceil(numOutputs/numChannels));
+            
+            ProcessingBlockRouted = ProcessingBlockRouted(:, 1:numOutputs);
         end
         
         ProcessingBlock = ProcessingBlockRouted;
@@ -1392,8 +1666,6 @@ init();
 
         if bPlaySelectionFlag
             
-            
-            
             FrmBeg  = max([floor(vZoomPosition(1)*fs) 1]);
             FrmEnd  = floor((vZoomPosition(1)+vZoomPosition(3))*fs);
             
@@ -1401,9 +1673,6 @@ init();
         else
             vPlayStartEnd = [1 vWaveSize(1)];
         end
-        
-        
-       
         
         bIsPlayingFlag = 1;
         bIsPausedFlag  = 0;
@@ -1417,7 +1686,7 @@ init();
        else
            CurrentPos   = PlayIdx/fs;
        end
-       szCurrentPos = sprintf('%8.3f',CurrentPos);
+       szCurrentPos = sprintf('%.0f:06.3f ',CurrentPos/60, rem(CurrentPos,60));
        
        set(handles.hValueCurrentPos, ...
            'String', szCurrentPos)
@@ -1452,7 +1721,7 @@ init();
         set(handles.hPBPlay,     'Enable', 'on' )
         set(handles.hPBPause,    'Enable', 'off')
         set(handles.hPBStop,     'Enable', 'off')
-        
+       
         % Reset index and flags
         PlayIdx          = 1;
         bIsPlayingFlag   = 0;
@@ -1491,15 +1760,7 @@ init();
         
         save(szSaveFile, 'globset*', '-mat', '-append')
         
-
-        if playrec('isInitialised')
-            playrec('reset');
-        end
-        playrec('init', fs, globsetOutputID, -1, ...
-            numOutputs, [],iBlockLen);
-        
-        
-
+        playrecInit;
     end
 
 %% Function to plot new positioning lines in all axes
@@ -1521,6 +1782,10 @@ init();
         numOutputs = stDevices([stDevices.deviceID]==devID).outputChans;
         vChanMap   = 1:numOutputs;
         routingMatrix = eye(numChannels, numOutputs);
+        routingMatrixDisplay = routingMatrix;
+        
+        routingMatrixDisplay(routingMatrix==0) = -inf;
+        routingMatrixDisplay(routingMatrix==1) = 0;
         
     end
 
@@ -1595,10 +1860,11 @@ init();
         end
         
         % update GUI with new start and end time
-        szSelectionStart = sprintf('%8.3f s', ...
-            vZoomPosition(1));
-        szSelectionEnd   = sprintf('%8.3f s', ...
-            vZoomPosition(1)+vZoomPosition(3));
+        szSelectionStart = sprintf('%.0f:%06.3f ', ...
+            vZoomPosition(1)/60, rem(vZoomPosition(1),60));
+        szSelectionEnd   = sprintf('%.0f:%06.3f ', ...
+            (vZoomPosition(1)+vZoomPosition(3))/60, ...
+            rem(vZoomPosition(1)+vZoomPosition(3),60));
 
         set(handles.hValueSelectionStart, ...
             'String', szSelectionStart)
@@ -1657,6 +1923,39 @@ init();
     function ResetZoomWrapper
         ReadAndComputeMaxData([],[],1);
     end
+
+%% Function handling the reset of Playrec
+    function playrecInit
+        if playrec('isInitialised')
+            playrec('delPage');
+            playrec('reset');
+        end
+        
+            playrec('init', fs, globsetOutputID, -1, ...
+                numOutputs, [],globsetiBlockLen);
+        end
+
+%% Set a new windows ResizeFcn while preserving the old 
+hPrevResizeFcn = get(hFigure, 'ResizeFcn');
+set(hFigure, 'ResizeFcn', @InternalResizeFunction);
+
+    function InternalResizeFunction(obj, evd)
+       
+        if bIsStandalone
+            % Gather the current figure size and save it
+            vFigPos = get(obj, 'Position');
+            guiSize = vFigPos(3:4);
+            save(szSaveFile, 'globset*', 'gui*', '-mat')
+        end
+        
+        if ~isempty(hPrevResizeFcn) && ~strcmpi(get(obj, 'tag'), 'new')
+            hPrevResizeFcn();
+        elseif strcmpi(get(obj, 'tag'), 'new')
+            set(obj, 'tag', '');
+        end
+        
+    end
+
 
 end
 

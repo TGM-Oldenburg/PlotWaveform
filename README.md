@@ -1,35 +1,27 @@
-# PLOTWAVEFORM waveform plotting
+# PlotWaveform toolbox for Matlab audio data displayal
 
 ## Synposis
-**PlotWaveform (PWF) is a MATLAB tool to plot the waveform of a WAVE-file using a block-by-block mean calculation algorithm, using a number of blocks defined by the size of the axis (and therefore the available pixelwidth) which enables the most precise rendering of the data while using less CPU cycles then in normal ```plot();``` calculation. Additionally PWF supports a secondary display layer, in which WAVE-data is plotted sample-exact just as the default ```plot();``` function would do. This layer is used only when a certain number of samples is not exceeded anymore. A third display layer supports the displayal of  sample-exact data in the views of ```stems();``` or ```stairs();``` functions. This view is set for the tightly zoomed WAVE portions.**
+**PlotWaveform (PWF) is a Matlab tool to plot the waveform of a WAVE-file (or in newer Matlab versions even other formats using the ```audioread()``` function)using a block-by-block mean calculation algorithm. The number of blocks is defined by the size of the axis and therefore the available pixelwidth which enables the most precise rendering of the data while using less CPU cycles than with standard ```plot()``` generation. Additionally PWF supports a secondary display layer, in which audio data is plotted sample-exact just as the default ```plot()``` function would do. This layer is used only when a certain number of samples is not exceeded anymore. A third display layer supports the displayal of  sample-exact data in the views of ```stem()``` or ```stairs()``` functions. This view is set for the tightly zoomed audio portions.**
 
 ## Usage
 
+__PlotWaveform__ is simply called with the filename of an audio file or with a vector audio samples in the first input argument. If executed with using a variable, the second input argument has to be the sampling rate. Either way numerous other function behavior modifiers are available (see list [below](#parameters)).
+
+__WaveformPlayer__ is called the same way as PlotWaveform, only that it provides you with a basic audio player built right in. The integrated [Playrec](https://github.com/Janwillhaus/Playrec) audio playback and recording function is used to playback the displayed audio.
+
+### Examples:
 ```Matlab
-[myFigure myAxes myPrint vZoomPosition OrigStartEndVal ... 
-    OrigSampleValuesPos OrigSampleValuesNeg OrigTimeVec numChannels] = ... 
-    PlotWaveform(szFileNameOrData, varargin)
+PlotWaveform('audiofile.wav');
+PlotWaveform(audio_vec, fs);
+PlotWaveform(__, 'ChannelView', 1);
+
+WaveformPlayer('audiofile.wav');
+WaveformPlayer(audio_vec, fs);
 ```
 
 ## Parameters
 
 ```Matlab
-%   Input Parameter:
-%   ----------------
-%
-%   szFileNameOrData:   string containing the filename of the WAVE-file or
-%                       the variable containing the raw WAVE-data.
-%                       (the latter requires the first following argument
-%                       to be the desired sampling frequency)
-%
-%   varargin:           variable set of input arguments to modify the
-%                       functions behavior. Consist of one declaration of
-%                       setting and another declaration of value
-%                       (eg. 'ChannelView',1). Possible behavior settings
-%                       are shown and explained below.
-%
-%
-%
 %   Possible function behavior settings:
 %   ------------------------------------
 %
@@ -74,98 +66,17 @@
 %   'Verbose':          integer to which to set the verbose logging. While
 %                       future versions may offer more depth in verbose,
 %                       right now only 0 (off) and 1 (on) are supported.
-%
-%
-%
-%   Output Parameter:
-%   -----------------
-%
-%   myFigure:           handle to use in superior function or script to
-%                       modify the parameters of the overall figure
-%
-%   myAxes:             handle to use in superior function or script to 
-%                       modify the parameters of the plot
-%
-%   myPrint:            function handle to use in superior function to
-%                       call the internal print-function
-%
-%   vZoomPosition:      returns the actual zoom position to a superior
-%                       function or script
-%
-%   OrigStartEndVal:    returns the original start and end values of the
-%                       plotted WAVE to a superior function or script
-%
-%   OrigSampleValuesPos:returns the original sample values of the positive
-%                       halfshaft to a superior function or script
-%                        
-%   OrigSampleValuesNeg:returns the original sample values of the negative
-%                       halfshaft to a superior function or script
-%
-%   OrigTimeVec:        returns the corresponding time vector for the
-%                       sample values to a superior function or script
-%
-%   numChannels:        returns the number of channels in the WAVE
 ```
 
 ## Version History
-```Matlab
-%   Version History:
-%   Ver. 0.01   initial proof of concept script             10-Aug-2011     JB
-%   Ver. 0.10   inital build of the function                27-Aug-2011     JW
-%   Ver. 0.11   implementing mono & stereo view             31-Aug-2011     JW
-%   Ver. 0.12   debugging second zoom layer                 01-Sep-2011     JW
-%   Ver. 0.21   implementing two-axis view for stereo       07-Sep-2011     JW
-%   Ver. 0.22   adding possibility to read multichannel     08-Sep-2011     JW
-%   Ver. 0.23   improvements on multi-axis view             15-Sep-2011     JW
-%   Ver. 0.24   debugging zoom layer switch                 22-Sep-2011     JW
-%   Ver. 0.25   improvements on second zoom layer           28-Sep-2011     JW
-%   Ver. 0.30   implementing customized zoom menu           12-Oct-2011     JW
-%   Ver. 0.31   debugging customized zoom menu              23-Oct-2011     JW
-%   Ver. 0.32   code cleaning, killing matlab warnings      01-Dec-2011     JW
-%   Ver. 0.40   implementing print-functionhandle           30-Jan-2012     JW
-%   Ver. 0.50   implementing wave-overview                  15-Feb-2012     JW
-%   Ver. 0.51   fixed faulty zoom extract                   16-Feb-2012     JW
-%   Ver. 0.60   supports PlotWaveformOverview function      27-Feb-2012     JW
-%   Ver. 0.61   code cleaning, updating the help info       09-Mar-2012     JW
-%   Ver. 0.70   code cleaning again. ready for public       01-Jun-2012     JW
-%   Ver. 0.71   fixed some UI glitches due to use of gca    12-jan-2013     JW
-%   Ver. 0.80   added 'axes' behavioral setting             12-Jan-2013     JW
-%
-%   Ver. 0.90   tons of improvements due to extended        25-Feb-2013     JW
-%               usage in WaveformPlayer:
-%               * fixed heavy glitches in terms of multi-
-%                 axes and -figure use: The behavior of the
-%                 'Axes' function property now works and
-%                 allows the user to plot waveforms in any
-%                 already given axes.
-%               * reset to original values now works 
-%                 correctly when ChannelView is off and 
-%                 supports alpha blending in this state.
-%               * other small bugfixes and improvements.
-%
-%   Ver. 0.91   Fixed the multi-axes behavior. PWF can     09-Mar-2013     JW
-%               now be placed in axes even with channel
-%               view activated. All channels will be 
-%               plotted in place of the "parent" axes.
-%
-%   Ver. 1.0    Major release! PWF is now extremely fast   06-Sep-2013      JW
-%               in working with huge files, due to a new
-%               approach to block-processing the wavread
-%               itself. 1GB of wave can easily be loaded
-%               in about 15 seconds, while staying low in
-%               memory consumption.
-%               Additional info: future versioning info 
-%               will be placed inside the CHANGELOG.md 
-%               file included in the repo. That way it is 
-%               easier to handle the multiple functions of 
-%               the bundle. Cheers!
-```
 
-## Licensing
+Please consult the [CHANGELOG.md](CHANGELOG.md)
 
-**PLOTWAVEFORM** is available under X11 (so called *MIT*) license
+## License
 
-Copyright (c) 2011-2012 Jan Willhaus, Joerg Bitzer (Institute for Hearing Technology and Audiology at Jade University of Applied Sciences)
+**PlotWaveform** is available under X11 license
+
+Copyright (c) 2011-2014 Jan Willhaus, Joerg Bitzer (Institute for Hearing Technology and Audiology at Jade University of Applied Sciences)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: 
 
