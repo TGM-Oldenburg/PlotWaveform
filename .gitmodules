@@ -1,0 +1,3 @@
+[submodule "Playrec-Binaries"]
+	path = Playrec-Binaries
+	url = https://github.com/Janwillhaus/Playrec-Binaries.git
