@@ -1779,7 +1779,19 @@ init();
 %% Function to gather the number of output devices
     function getNumberOfOutputs(devID)
         
-        numOutputs = stDevices([stDevices.deviceID]==devID).outputChans;
+        stSelectedDevice = (stDevices([stDevices.deviceID]==devID));
+        
+        if ~isempty(stSelectedDevice)
+            numOutputs = stSelectedDevice.outputChans;
+        else
+            % Warning when Ini-file contains device ID that is now missing
+            numOutputs = 0;
+            
+            warndlg({'The previously chosen output device has no outputs.', ...
+                'Please select a new interface from the ''Audio'' menu.'}, ...
+                'Audio Device Unavailable');
+        end
+        
         vChanMap   = 1:numOutputs;
         routingMatrix = eye(numChannels, numOutputs);
         routingMatrixDisplay = routingMatrix;
