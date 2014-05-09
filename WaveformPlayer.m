@@ -479,8 +479,6 @@ init();
             end
             specProg(3);
             
-            SpectrData = flipud(SpectrData); % Fix for upside down y axis (1/2)
-            
             hSpectrograms(xx) = imagesc(...
                 vStartEndVal(1:2), ...
                 [0 fs/2000], ...
@@ -493,8 +491,9 @@ init();
                 num2str(xx) '),' guiColormapDef ');'];
             eval(szEval);            
             hold(hWaveAxes(xx), 'off')
-            set(hWaveAxes(xx), ...
-                'YDir', 'normal');           % Fix for upside down y axis (2/2)
+            
+            % Fix for upside down y axis
+            set(hWaveAxes(xx), 'YDir', 'normal');           
             
             if xx == 1
                 set(hWaveAxes(xx), 'XAxisLocation', 'top');
